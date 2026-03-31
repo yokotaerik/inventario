@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html,
+body,
+#root {
+	min-height: 100dvh;
+}
+
+body {
+	color: #0f172a;
+	font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+	background: #f1f5f9;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1.2;
+}
+
+p {
+	line-height: 1.55;
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	border: none;
+	outline: none;
+	background: none;
+}
