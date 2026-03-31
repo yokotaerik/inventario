@@ -11,8 +11,12 @@ services:
       - INVENTORY_ADMIN_USER=admin
       - INVENTORY_ADMIN_PASSWORD=admin123
       - INVENTORY_ADMIN_TOKEN=inventory-admin-token
+    ports:
+      - "8000:8000"
     expose:
       - "8000"
+    networks:
+      - inventory-net
 
   frontend:
     build:
@@ -24,3 +28,9 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    networks:
+      - inventory-net
+
+networks:
+  inventory-net:
+    driver: bridge
