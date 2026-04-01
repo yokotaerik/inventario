@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ClipboardList,
   Download,
-  Eye,
   Loader2,
   Lock,
   LogOut,
@@ -28,27 +27,17 @@ import {
   UserPlus,
   Users,
   X,
-  type LucideIcon,
 } from 'lucide-react'
+import BottomNav from './components/BottomNav.tsx'
 import './App.css'
 
 type TabKey = 'status' | 'scanner' | 'history' | 'admin-list' | 'admin-create' | 'admin-employees'
 
-interface TabOption {
-  key: TabKey
-  label: string
-  icon: LucideIcon
-  requiresLogin?: boolean
-}
-
-const tabs: TabOption[] = [
-  { key: 'status', label: 'Status', icon: Eye },
+const tabs = [
   { key: 'scanner', label: 'Scanner', icon: ScanLine },
   { key: 'history', label: 'Histórico', icon: ClipboardList },
-  { key: 'admin-list', label: 'Itens', icon: Package, requiresLogin: true },
-  { key: 'admin-create', label: 'Criar', icon: Plus, requiresLogin: true },
-  { key: 'admin-employees', label: 'Equipe', icon: Users, requiresLogin: true },
-]
+  { key: 'admin-list', label: 'Admin', icon: Shield },
+] as const
 
 const statusLabelMap: Record<ItemStatus, string> = {
   available: 'Disponível',
@@ -219,6 +208,7 @@ function App() {
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
   const [editItemForm, setEditItemForm] = useState(defaultCreateItem)
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
+  const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<number>>(new Set())
   // Scanner checkout fields
   const [checkoutDestino, setCheckoutDestino] = useState('')
   const [checkoutObs, setCheckoutObs] = useState('')
@@ -366,6 +356,39 @@ function App() {
     setEmployeesPage((current) => Math.min(current, totalEmployeesPages))
   }, [totalEmployeesPages])
 
+  useEffect(() => {
+    const validNodeIds = new Set<number>()
+    const collectIds = (nodes: ItemTreeNode[]) => {
+      for (const node of nodes) {
+        validNodeIds.add(node.id)
+        if (node.children.length > 0) {
+          collectIds(node.children)
+        }
+      }
+    }
+
+    collectIds(adminTree)
+
+    setExpandedTreeNodes((previous) => {
+      const next = new Set<number>()
+      for (const nodeId of previous) {
+        if (validNodeIds.has(nodeId)) {
+          next.add(nodeId)
+        }
+      }
+
+      if (previous.size === 0) {
+        for (const rootNode of adminTree) {
+          if (rootNode.children.length > 0) {
+            next.add(rootNode.id)
+          }
+        }
+      }
+
+      return next
+    })
+  }, [adminTree])
+
   /* ─── helpers ─── */
 
   const generateRandomCode = () => {
@@ -468,11 +491,6 @@ function App() {
   }
 
   const navigate = (tab: TabKey) => {
-    const selected = tabs.find((t) => t.key === tab)
-    if (selected?.requiresLogin && !isAuthenticated) {
-      setActiveTab('admin-list')
-      return
-    }
     setActiveTab(tab)
   }
 
@@ -481,6 +499,18 @@ function App() {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      return next
+    })
+  }
+
+  const toggleTreeNode = (id: number) => {
+    setExpandedTreeNodes((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
@@ -955,6 +985,32 @@ function App() {
       )
     }
 
+    const renderAdminTabs = () => (
+      <div className="admin-subnav" role="tablist" aria-label="Menu do admin">
+        <button
+          type="button"
+          className={`admin-subnav-btn ${activeTab === 'admin-list' ? 'active' : ''}`}
+          onClick={() => setActiveTab('admin-list')}
+        >
+          Inventário
+        </button>
+        <button
+          type="button"
+          className={`admin-subnav-btn ${activeTab === 'admin-create' ? 'active' : ''}`}
+          onClick={() => setActiveTab('admin-create')}
+        >
+          Novo Item
+        </button>
+        <button
+          type="button"
+          className={`admin-subnav-btn ${activeTab === 'admin-employees' ? 'active' : ''}`}
+          onClick={() => setActiveTab('admin-employees')}
+        >
+          Equipe
+        </button>
+      </div>
+    )
+
     const createHashValue = createItemForm.qr_code_hash.trim() || 'SEM-CODIGO'
     const createPreviewValue = buildItemDeepLink(createHashValue)
     const editHashValue = editItemForm.qr_code_hash.trim() || 'SEM-CODIGO'
@@ -964,23 +1020,37 @@ function App() {
       nodes.map((node) => (
         <li key={node.id}>
           <div className="tree-node" style={{ paddingLeft: `${depth * 20 + 16}px` }}>
+            {node.children.length > 0 ? (
+              <button
+                type="button"
+                className="tree-node-toggle"
+                onClick={() => toggleTreeNode(node.id)}
+                aria-label={expandedTreeNodes.has(node.id) ? 'Recolher subitens' : 'Expandir subitens'}
+              >
+                <ChevronDown size={14} className={`tree-node-chevron ${expandedTreeNodes.has(node.id) ? 'open' : ''}`} />
+              </button>
+            ) : (
+              <span className="tree-node-spacer" aria-hidden="true" />
+            )}
             <span className="tree-name">{node.name}</span>
             <span className="tree-meta">{node.category}</span>
             <span className={`badge badge-${node.status}`}>{statusLabelMap[node.status]}</span>
           </div>
-          {node.children.length > 0 && (
-            <ul className="tree-list">{renderTreeNodes(node.children, depth + 1)}</ul>
+          {node.children.length > 0 && expandedTreeNodes.has(node.id) && (
+            <ul className="tree-list tree-children">{renderTreeNodes(node.children, depth + 1)}</ul>
           )}
         </li>
       ))
 
     if (activeTab === 'admin-create') {
       return (
-        <div className="create-card">
-          <h2>Novo Item</h2>
-          <p>Cadastre um equipamento com código QR único.</p>
+        <section className="admin-section">
+          {renderAdminTabs()}
+          <div className="create-card">
+            <h2>Novo Item</h2>
+            <p>Cadastre um equipamento com código QR único.</p>
 
-          <form className="create-form-grid" onSubmit={handleCreateItem}>
+            <form className="create-form-grid" onSubmit={handleCreateItem}>
             <div className="form-field">
               <label htmlFor="item-name">Nome</label>
               <input
@@ -1052,26 +1122,28 @@ function App() {
                 Criar item
               </button>
             </div>
-          </form>
+            </form>
 
-          <div className="qr-preview">
-            <h3>Prévia QR (link público)</h3>
-            <QRCodeCanvas id="create-qr-preview" value={createPreviewValue} size={140} includeMargin level="H" />
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => downloadQrByCanvasId('create-qr-preview', createHashValue)}
-            >
-              <Download size={14} /> Download
-            </button>
+            <div className="qr-preview">
+              <h3>Prévia QR (link público)</h3>
+              <QRCodeCanvas id="create-qr-preview" value={createPreviewValue} size={140} includeMargin level="H" />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => downloadQrByCanvasId('create-qr-preview', createHashValue)}
+              >
+                <Download size={14} /> Download
+              </button>
+            </div>
           </div>
-        </div>
+        </section>
       )
     }
 
     if (activeTab === 'admin-employees') {
       return (
         <section className="admin-section">
+          {renderAdminTabs()}
           <div className="section-header">
             <h2>Funcionários</h2>
             <button type="button" className="btn btn-ghost btn-sm" onClick={fetchAllEmployees}>
@@ -1257,6 +1329,7 @@ function App() {
 
     return (
       <section className="admin-section">
+        {renderAdminTabs()}
         <div className="section-header">
           <h2>Inventário</h2>
           <button type="button" className="btn btn-ghost btn-sm" onClick={fetchAllItems}>
@@ -1542,26 +1615,12 @@ function App() {
         </div>
       </div>
 
-      <nav className="bottom-nav">
-        {tabs.map((tab) => {
-          const Icon = tab.icon
-          const isActive = activeTab === tab.key
-          const isLocked = Boolean(tab.requiresLogin && !isAuthenticated)
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              className={`nav-item ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`}
-              onClick={() => navigate(tab.key)}
-            >
-              <span className="nav-icon">
-                <Icon size={20} />
-              </span>
-              <span>{tab.label}</span>
-            </button>
-          )
-        })}
-      </nav>
+      <BottomNav
+        tabs={tabs}
+        activeTab={activeTab}
+        isAuthenticated={isAuthenticated}
+        onNavigate={navigate}
+      />
     </div>
   )
 }
