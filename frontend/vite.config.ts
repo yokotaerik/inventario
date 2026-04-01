@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       host: true,
+      allowedHosts: true, 
       proxy: {
         '/auth': {
           target: apiTarget,
