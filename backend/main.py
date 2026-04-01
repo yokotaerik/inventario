@@ -77,6 +77,18 @@ class UpdateItemRequest(BaseModel):
     parent_item_id: Optional[int] = None
 
 
+class NewEmployeeRequest(BaseModel):
+    name: str
+    department: Optional[str] = None
+    is_active: bool = True
+
+
+class UpdateEmployeeRequest(BaseModel):
+    name: str
+    department: Optional[str] = None
+    is_active: bool
+
+
 def serialize_item(item: models.Item, parent_name_by_id: dict[int, str], child_count_by_parent: dict[int, int]):
     return {
         "id": item.id,
@@ -323,6 +335,75 @@ def get_item_by_qr(qr_hash: str, db: Session = Depends(database.get_db)):
 @app.get("/employees/active", response_model=None)
 def get_active_employees(db: Session = Depends(database.get_db)):
     return db.query(models.Employee).filter(models.Employee.is_active.is_(True)).all()
+
+
+@app.get("/employees", response_model=None, dependencies=[Depends(require_admin)])
+def get_employees(db: Session = Depends(database.get_db)):
+    return db.query(models.Employee).order_by(models.Employee.name.asc()).all()
+
+
+@app.post("/employees", status_code=status.HTTP_201_CREATED, response_model=None, dependencies=[Depends(require_admin)])
+def create_employee(payload: NewEmployeeRequest, db: Session = Depends(database.get_db)):
+    name = payload.name.strip()
+    department = payload.department.strip() if payload.department else None
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome do funcionário é obrigatório")
+
+    employee = models.Employee(
+        name=name,
+        department=department,
+        is_active=payload.is_active,
+    )
+
+    db.add(employee)
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+@app.put("/employees/{employee_id}", response_model=None, dependencies=[Depends(require_admin)])
+def update_employee(employee_id: int, payload: UpdateEmployeeRequest, db: Session = Depends(database.get_db)):
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+
+    name = payload.name.strip()
+    department = payload.department.strip() if payload.department else None
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Nome do funcionário é obrigatório")
+
+    employee.name = name
+    employee.department = department
+    employee.is_active = payload.is_active
+
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+@app.delete("/employees/{employee_id}", response_model=None, dependencies=[Depends(require_admin)])
+def delete_employee(employee_id: int, db: Session = Depends(database.get_db)):
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado")
+
+    has_transactions = (
+        db.query(models.Transaction.id)
+        .filter(models.Transaction.employee_id == employee_id)
+        .first()
+        is not None
+    )
+    if has_transactions:
+        raise HTTPException(
+            status_code=400,
+            detail="Não é possível excluir funcionário com histórico de movimentações",
+        )
+
+    db.delete(employee)
+    db.commit()
+    return {"message": "Funcionário excluído"}
 
 # 3. Registrar Empréstimo (Checkout)
 @app.post("/transactions/checkout", status_code=status.HTTP_201_CREATED)

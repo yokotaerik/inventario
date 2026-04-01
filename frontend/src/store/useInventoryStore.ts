@@ -110,6 +110,18 @@ interface UpdateItemPayload {
   parent_item_id: number | null
 }
 
+interface CreateEmployeePayload {
+  name: string
+  department: string
+  is_active: boolean
+}
+
+interface UpdateEmployeePayload {
+  name: string
+  department: string
+  is_active: boolean
+}
+
 interface CheckoutOptions {
   destino?: string
   observacao?: string
@@ -123,6 +135,7 @@ type DeleteMode = 'move_children' | 'delete_children'
 
 interface InventoryState {
   employees: Employee[]
+  allEmployees: Employee[]
   currentItem: ScanResponse | null
   statusItems: StatusItem[]
   allItems: Item[]
@@ -136,6 +149,7 @@ interface InventoryState {
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
   fetchEmployees: () => Promise<void>
+  fetchAllEmployees: () => Promise<void>
   fetchStatusItems: () => Promise<void>
   fetchAllItems: () => Promise<void>
   fetchTransactions: () => Promise<void>
@@ -145,12 +159,16 @@ interface InventoryState {
   createItem: (payload: CreateItemPayload) => Promise<boolean>
   updateItem: (itemId: number, payload: UpdateItemPayload) => Promise<boolean>
   deleteItem: (itemId: number, mode: DeleteMode) => Promise<boolean>
+  createEmployee: (payload: CreateEmployeePayload) => Promise<boolean>
+  updateEmployee: (employeeId: number, payload: UpdateEmployeePayload) => Promise<boolean>
+  deleteEmployee: (employeeId: number) => Promise<boolean>
   clearError: () => void
   clearCurrentItem: () => void
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   employees: [],
+  allEmployees: [],
   currentItem: null,
   statusItems: [],
   allItems: [],
@@ -175,6 +193,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         authError: null,
       })
       await get().fetchAllItems()
+      await get().fetchAllEmployees()
       return true
     } catch (err) {
       persistToken(null)
@@ -194,6 +213,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       authToken: null,
       isAuthenticated: false,
       allItems: [],
+      allEmployees: [],
       authError: null,
     })
   },
@@ -204,6 +224,31 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       set({ employees: response.data })
     } catch (_err) {
       set({ error: 'Erro ao buscar funcionários' })
+    }
+  },
+
+  fetchAllEmployees: async () => {
+    const { authToken } = get()
+    if (!authToken) {
+      set({ allEmployees: [] })
+      return
+    }
+
+    set({ adminLoading: true, authError: null })
+    try {
+      const response = await api.get<Employee[]>('/employees', {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      set({ allEmployees: response.data, adminLoading: false })
+    } catch (_err) {
+      persistToken(null)
+      set({
+        adminLoading: false,
+        isAuthenticated: false,
+        authToken: null,
+        allEmployees: [],
+        authError: 'Sessão expirada. Faça login novamente.',
+      })
     }
   },
 
@@ -369,6 +414,81 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       set({
         adminLoading: false,
         authError: getErrorMessage('Erro ao excluir item', err),
+      })
+      return false
+    }
+  },
+
+  createEmployee: async (payload) => {
+    const { authToken } = get()
+    if (!authToken) {
+      set({ authError: 'Você precisa fazer login para criar funcionários.' })
+      return false
+    }
+
+    set({ adminLoading: true, authError: null, error: null })
+    try {
+      await api.post('/employees', payload, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      set({ adminLoading: false })
+      await get().fetchAllEmployees()
+      await get().fetchEmployees()
+      return true
+    } catch (err) {
+      set({
+        adminLoading: false,
+        authError: getErrorMessage('Erro ao criar funcionário', err),
+      })
+      return false
+    }
+  },
+
+  updateEmployee: async (employeeId, payload) => {
+    const { authToken } = get()
+    if (!authToken) {
+      set({ authError: 'Você precisa fazer login para editar funcionários.' })
+      return false
+    }
+
+    set({ adminLoading: true, authError: null, error: null })
+    try {
+      await api.put(`/employees/${employeeId}`, payload, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      set({ adminLoading: false })
+      await get().fetchAllEmployees()
+      await get().fetchEmployees()
+      return true
+    } catch (err) {
+      set({
+        adminLoading: false,
+        authError: getErrorMessage('Erro ao editar funcionário', err),
+      })
+      return false
+    }
+  },
+
+  deleteEmployee: async (employeeId) => {
+    const { authToken } = get()
+    if (!authToken) {
+      set({ authError: 'Você precisa fazer login para excluir funcionários.' })
+      return false
+    }
+
+    set({ adminLoading: true, authError: null, error: null })
+    try {
+      await api.delete(`/employees/${employeeId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      set({ adminLoading: false })
+      await get().fetchAllEmployees()
+      await get().fetchEmployees()
+      return true
+    } catch (err) {
+      set({
+        adminLoading: false,
+        authError: getErrorMessage('Erro ao excluir funcionário', err),
       })
       return false
     }

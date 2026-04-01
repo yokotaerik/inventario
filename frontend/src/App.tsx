@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useInventoryStore, type Item, type ItemStatus, type StatusItem } from './store/useInventoryStore'
+import { useInventoryStore, type Employee, type Item, type ItemStatus, type StatusItem } from './store/useInventoryStore'
 import { QRCodeCanvas } from 'qrcode.react'
 import QRScanner from './components/QRScanner'
 import {
@@ -25,12 +25,14 @@ import {
   Sparkles,
   Trash2,
   User,
+  UserPlus,
+  Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import './App.css'
 
-type TabKey = 'status' | 'scanner' | 'history' | 'admin-list' | 'admin-create'
+type TabKey = 'status' | 'scanner' | 'history' | 'admin-list' | 'admin-create' | 'admin-employees'
 
 interface TabOption {
   key: TabKey
@@ -45,6 +47,7 @@ const tabs: TabOption[] = [
   { key: 'history', label: 'Histórico', icon: ClipboardList },
   { key: 'admin-list', label: 'Itens', icon: Package, requiresLogin: true },
   { key: 'admin-create', label: 'Criar', icon: Plus, requiresLogin: true },
+  { key: 'admin-employees', label: 'Equipe', icon: Users, requiresLogin: true },
 ]
 
 const statusLabelMap: Record<ItemStatus, string> = {
@@ -61,8 +64,16 @@ const defaultCreateItem = {
   parent_item_id: null as number | null,
 }
 
+const defaultEmployeeForm = {
+  name: '',
+  department: '',
+  is_active: true,
+}
+
 const PULL_TRIGGER = 72
 const PULL_MAX = 120
+const ITEMS_PER_PAGE = 10
+const EMPLOYEES_PER_PAGE = 10
 
 interface ItemTreeNode extends Item {
   children: ItemTreeNode[]
@@ -119,11 +130,50 @@ function formatDate(isoString: string | null): string {
   })
 }
 
+function buildItemDeepLink(qrHash: string): string {
+  const normalized = qrHash.trim()
+  if (!normalized) return ''
+
+  if (typeof window === 'undefined') {
+    return normalized
+  }
+
+  const configuredBase = (import.meta.env.VITE_APP_PUBLIC_URL as string | undefined)?.trim()
+  const baseUrl = configuredBase && configuredBase.length > 0
+    ? configuredBase.replace(/\/$/, '')
+    : window.location.origin
+
+  return `${baseUrl}/?qr=${encodeURIComponent(normalized)}`
+}
+
+function normalizeScannedValue(rawValue: string): string {
+  const value = rawValue.trim()
+  if (!value) return ''
+
+  try {
+    const parsed = new URL(value)
+    const queryValue = parsed.searchParams.get('qr')
+    if (queryValue && queryValue.trim()) {
+      return queryValue.trim()
+    }
+
+    const pathMatch = parsed.pathname.match(/\/scan\/([^/]+)/)
+    if (pathMatch?.[1]) {
+      return decodeURIComponent(pathMatch[1]).trim()
+    }
+  } catch (_err) {
+    // Value is not a URL, keep original raw hash.
+  }
+
+  return value
+}
+
 /* ─────────── App ─────────── */
 
 function App() {
   const {
     employees,
+    allEmployees,
     statusItems,
     allItems,
     transactions,
@@ -138,6 +188,7 @@ function App() {
     fetchEmployees,
     fetchStatusItems,
     fetchAllItems,
+    fetchAllEmployees,
     fetchTransactions,
     scanItem,
     checkout,
@@ -145,6 +196,9 @@ function App() {
     createItem,
     updateItem,
     deleteItem,
+    createEmployee,
+    updateEmployee,
+    deleteEmployee,
     clearError,
     clearCurrentItem,
   } = useInventoryStore()
@@ -157,6 +211,11 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [createItemForm, setCreateItemForm] = useState(defaultCreateItem)
+  const [createEmployeeForm, setCreateEmployeeForm] = useState(defaultEmployeeForm)
+  const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null)
+  const [editEmployeeForm, setEditEmployeeForm] = useState(defaultEmployeeForm)
+  const [itemsPage, setItemsPage] = useState(1)
+  const [employeesPage, setEmployeesPage] = useState(1)
   const [editingItemId, setEditingItemId] = useState<number | null>(null)
   const [editItemForm, setEditItemForm] = useState(defaultCreateItem)
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
@@ -175,8 +234,9 @@ function App() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchAllItems()
+      fetchAllEmployees()
     }
-  }, [fetchAllItems, isAuthenticated])
+  }, [fetchAllEmployees, fetchAllItems, isAuthenticated])
 
   useEffect(() => {
     if (activeTab === 'history') {
@@ -187,13 +247,18 @@ function App() {
   /* ─── actions ─── */
 
   const handleScan = (qrHash: string) => {
-    scanItem(qrHash)
+    const normalized = normalizeScannedValue(qrHash)
+    if (!normalized) return
+    scanItem(normalized)
   }
 
   const refreshData = async () => {
     await fetchStatusItems()
     if (activeTab === 'history') await fetchTransactions()
-    if (isAuthenticated) await fetchAllItems()
+    if (isAuthenticated) {
+      await fetchAllItems()
+      await fetchAllEmployees()
+    }
   }
 
   const runRefresh = async () => {
@@ -245,6 +310,22 @@ function App() {
     })
   }, [allItems])
 
+  const totalItemsPages = Math.max(1, Math.ceil(sortedAdminItems.length / ITEMS_PER_PAGE))
+  const paginatedAdminItems = useMemo(() => {
+    const start = (itemsPage - 1) * ITEMS_PER_PAGE
+    return sortedAdminItems.slice(start, start + ITEMS_PER_PAGE)
+  }, [itemsPage, sortedAdminItems])
+
+  const sortedEmployees = useMemo(() => {
+    return [...allEmployees].sort((left, right) => left.name.localeCompare(right.name))
+  }, [allEmployees])
+
+  const totalEmployeesPages = Math.max(1, Math.ceil(sortedEmployees.length / EMPLOYEES_PER_PAGE))
+  const paginatedEmployees = useMemo(() => {
+    const start = (employeesPage - 1) * EMPLOYEES_PER_PAGE
+    return sortedEmployees.slice(start, start + EMPLOYEES_PER_PAGE)
+  }, [employeesPage, sortedEmployees])
+
   const parentOptions = useMemo(() => {
     return allItems.filter((item) => item.parent_item_id === null)
   }, [allItems])
@@ -276,6 +357,14 @@ function App() {
     if (editingItemId === null) return parentOptions
     return parentOptions.filter((item) => item.id !== editingItemId)
   }, [editingItemId, parentOptions])
+
+  useEffect(() => {
+    setItemsPage((current) => Math.min(current, totalItemsPages))
+  }, [totalItemsPages])
+
+  useEffect(() => {
+    setEmployeesPage((current) => Math.min(current, totalEmployeesPages))
+  }, [totalEmployeesPages])
 
   /* ─── helpers ─── */
 
@@ -319,6 +408,44 @@ function App() {
     setEditItemForm(defaultCreateItem)
   }
 
+  const startEditEmployee = (employee: Employee) => {
+    setEditingEmployeeId(employee.id)
+    setEditEmployeeForm({
+      name: employee.name,
+      department: employee.department || '',
+      is_active: employee.is_active,
+    })
+  }
+
+  const cancelEmployeeEdit = () => {
+    setEditingEmployeeId(null)
+    setEditEmployeeForm(defaultEmployeeForm)
+  }
+
+  const handleDeleteEmployee = async (employee: Employee) => {
+    const confirmed = window.confirm(`Excluir funcionário "${employee.name}"?`)
+    if (!confirmed) return
+    const success = await deleteEmployee(employee.id)
+    if (success && editingEmployeeId === employee.id) {
+      cancelEmployeeEdit()
+    }
+    if (success) {
+      setEmployeesPage((current) => Math.max(1, current))
+    }
+  }
+
+  const toggleEmployeeStatus = async (employee: Employee) => {
+    await updateEmployee(employee.id, {
+      name: employee.name,
+      department: employee.department || '',
+      is_active: !employee.is_active,
+    })
+
+    if (editingEmployeeId === employee.id) {
+      setEditEmployeeForm((prev) => ({ ...prev, is_active: !employee.is_active }))
+    }
+  }
+
   const handleDeleteItem = async (item: Item) => {
     let mode: 'move_children' | 'delete_children' = 'move_children'
     if (item.has_sub_items) {
@@ -333,8 +460,11 @@ function App() {
         : `Excluir "${item.name}" e todos subitens?`,
     )
     if (!confirmed) return
-    await deleteItem(item.id, mode)
-    if (editingItemId === item.id) cancelEdit()
+    const success = await deleteItem(item.id, mode)
+    if (success && editingItemId === item.id) cancelEdit()
+    if (success) {
+      setItemsPage((current) => Math.max(1, current))
+    }
   }
 
   const navigate = (tab: TabKey) => {
@@ -388,6 +518,20 @@ function App() {
     setManualCode('')
   }
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    const qrFromUrl = params.get('qr')
+    if (!qrFromUrl || !qrFromUrl.trim()) return
+
+    setActiveTab('scanner')
+    handleScan(qrFromUrl)
+
+    const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`
+    window.history.replaceState({}, '', cleanUrl)
+  }, [])
+
   /* ─── form handlers ─── */
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -425,6 +569,31 @@ function App() {
       parent_item_id: editItemForm.parent_item_id,
     })
     if (success) cancelEdit()
+  }
+
+  const handleCreateEmployee = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const success = await createEmployee({
+      name: createEmployeeForm.name.trim(),
+      department: createEmployeeForm.department.trim(),
+      is_active: createEmployeeForm.is_active,
+    })
+    if (success) {
+      setCreateEmployeeForm(defaultEmployeeForm)
+    }
+  }
+
+  const handleEditEmployee = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (editingEmployeeId === null) return
+    const success = await updateEmployee(editingEmployeeId, {
+      name: editEmployeeForm.name.trim(),
+      department: editEmployeeForm.department.trim(),
+      is_active: editEmployeeForm.is_active,
+    })
+    if (success) {
+      cancelEmployeeEdit()
+    }
   }
 
   const handleLogout = () => {
@@ -786,8 +955,10 @@ function App() {
       )
     }
 
-    const createPreviewValue = createItemForm.qr_code_hash.trim() || 'SEM-CODIGO'
-    const editPreviewValue = editItemForm.qr_code_hash.trim() || 'SEM-CODIGO'
+    const createHashValue = createItemForm.qr_code_hash.trim() || 'SEM-CODIGO'
+    const createPreviewValue = buildItemDeepLink(createHashValue)
+    const editHashValue = editItemForm.qr_code_hash.trim() || 'SEM-CODIGO'
+    const editPreviewValue = buildItemDeepLink(editHashValue)
 
     const renderTreeNodes = (nodes: ItemTreeNode[], depth = 0) =>
       nodes.map((node) => (
@@ -884,17 +1055,203 @@ function App() {
           </form>
 
           <div className="qr-preview">
-            <h3>Prévia QR</h3>
+            <h3>Prévia QR (link público)</h3>
             <QRCodeCanvas id="create-qr-preview" value={createPreviewValue} size={140} includeMargin level="H" />
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              onClick={() => downloadQrByCanvasId('create-qr-preview', createPreviewValue)}
+              onClick={() => downloadQrByCanvasId('create-qr-preview', createHashValue)}
             >
               <Download size={14} /> Download
             </button>
           </div>
         </div>
+      )
+    }
+
+    if (activeTab === 'admin-employees') {
+      return (
+        <section className="admin-section">
+          <div className="section-header">
+            <h2>Funcionários</h2>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={fetchAllEmployees}>
+              <RefreshCw size={14} /> Atualizar
+            </button>
+          </div>
+
+          <div className="create-card">
+            <h2>Novo Funcionário</h2>
+            <p>Cadastre colaboradores para controle de retirada e devolução.</p>
+
+            <form className="create-form-grid" onSubmit={handleCreateEmployee}>
+              <div className="form-field">
+                <label htmlFor="employee-name">Nome</label>
+                <input
+                  id="employee-name"
+                  type="text"
+                  placeholder="Ex.: João Silva"
+                  value={createEmployeeForm.name}
+                  onChange={(e) => setCreateEmployeeForm((c) => ({ ...c, name: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="employee-department">Departamento</label>
+                <input
+                  id="employee-department"
+                  type="text"
+                  placeholder="Ex.: Operacional"
+                  value={createEmployeeForm.department}
+                  onChange={(e) => setCreateEmployeeForm((c) => ({ ...c, department: e.target.value }))}
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="employee-active">Status</label>
+                <select
+                  id="employee-active"
+                  value={createEmployeeForm.is_active ? 'true' : 'false'}
+                  onChange={(e) => setCreateEmployeeForm((c) => ({ ...c, is_active: e.target.value === 'true' }))}
+                >
+                  <option value="true">Ativo</option>
+                  <option value="false">Inativo</option>
+                </select>
+              </div>
+              <div className="form-field" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary btn-block" disabled={adminLoading}>
+                  {adminLoading ? <Loader2 size={16} className="spin" /> : <UserPlus size={16} />}
+                  Criar funcionário
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {editingEmployeeId !== null && (
+            <div className="edit-panel">
+              <div className="edit-panel-header">
+                <h3><Pencil size={16} /> Editar Funcionário</h3>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEmployeeEdit}>
+                  <X size={14} /> Cancelar
+                </button>
+              </div>
+
+              <form className="edit-form-grid" onSubmit={handleEditEmployee}>
+                <div className="form-field">
+                  <label htmlFor="edit-employee-name">Nome</label>
+                  <input
+                    id="edit-employee-name"
+                    type="text"
+                    value={editEmployeeForm.name}
+                    onChange={(e) => setEditEmployeeForm((c) => ({ ...c, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor="edit-employee-department">Departamento</label>
+                  <input
+                    id="edit-employee-department"
+                    type="text"
+                    value={editEmployeeForm.department}
+                    onChange={(e) => setEditEmployeeForm((c) => ({ ...c, department: e.target.value }))}
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor="edit-employee-active">Status</label>
+                  <select
+                    id="edit-employee-active"
+                    value={editEmployeeForm.is_active ? 'true' : 'false'}
+                    onChange={(e) => setEditEmployeeForm((c) => ({ ...c, is_active: e.target.value === 'true' }))}
+                  >
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                  </select>
+                </div>
+                <div className="form-field" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button type="submit" className="btn btn-primary btn-block" disabled={adminLoading}>
+                    {adminLoading ? <Loader2 size={16} className="spin" /> : <Pencil size={14} />}
+                    Salvar funcionário
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="table-card">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Departamento</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedEmployees.map((employee) => (
+                    <tr key={employee.id}>
+                      <td><span className="row-name">{employee.name}</span></td>
+                      <td>{employee.department || '—'}</td>
+                      <td>
+                        <span className={`badge ${employee.is_active ? 'badge-available' : 'badge-maintenance'}`}>
+                          {employee.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="btn-icon" title="Editar" onClick={() => startEditEmployee(employee)}>
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            title={employee.is_active ? 'Desativar' : 'Ativar'}
+                            onClick={() => void toggleEmployeeStatus(employee)}
+                          >
+                            <Users size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon btn-icon-danger"
+                            title="Excluir"
+                            onClick={() => void handleDeleteEmployee(employee)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {allEmployees.length > 0 && (
+              <div className="table-pagination">
+                <span>Página {employeesPage} de {totalEmployeesPages}</span>
+                <div className="table-pagination-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={employeesPage === 1}
+                    onClick={() => setEmployeesPage((current) => Math.max(1, current - 1))}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={employeesPage === totalEmployeesPages}
+                    onClick={() => setEmployeesPage((current) => Math.min(totalEmployeesPages, current + 1))}
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
+            {allEmployees.length === 0 && !adminLoading && (
+              <div className="empty-state">Nenhum funcionário cadastrado.</div>
+            )}
+          </div>
+        </section>
       )
     }
 
@@ -1009,7 +1366,7 @@ function App() {
             </form>
 
             <div className="qr-preview" style={{ marginTop: 16 }}>
-              <h3>Prévia QR</h3>
+              <h3>Prévia QR (link público)</h3>
               <QRCodeCanvas id="edit-qr-preview" value={editPreviewValue} size={120} includeMargin level="H" />
             </div>
           </div>
@@ -1028,7 +1385,7 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {sortedAdminItems.map((item) => (
+                {paginatedAdminItems.map((item) => (
                   <tr key={item.id}>
                     <td>
                       {item.parent_item_id ? (
@@ -1061,7 +1418,7 @@ function App() {
                         </button>
                         <QRCodeCanvas
                           id={`item-qr-${item.id}`}
-                          value={item.qr_code_hash}
+                          value={buildItemDeepLink(item.qr_code_hash)}
                           size={56}
                           includeMargin
                           level="H"
@@ -1074,6 +1431,29 @@ function App() {
               </tbody>
             </table>
           </div>
+          {allItems.length > 0 && (
+            <div className="table-pagination">
+              <span>Página {itemsPage} de {totalItemsPages}</span>
+              <div className="table-pagination-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={itemsPage === 1}
+                  onClick={() => setItemsPage((current) => Math.max(1, current - 1))}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={itemsPage === totalItemsPages}
+                  onClick={() => setItemsPage((current) => Math.min(totalItemsPages, current + 1))}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          )}
           {allItems.length === 0 && !adminLoading && (
             <div className="empty-state">Nenhum item cadastrado.</div>
           )}
@@ -1093,6 +1473,7 @@ function App() {
     : activeTab === 'scanner' ? 'Scanner QR'
     : activeTab === 'history' ? 'Histórico'
     : activeTab === 'admin-create' ? 'Novo Item'
+    : activeTab === 'admin-employees' ? 'Funcionários'
     : 'Inventário'
 
   return (
@@ -1157,7 +1538,7 @@ function App() {
           {activeTab === 'status' && renderStatus()}
           {activeTab === 'scanner' && renderScanner()}
           {activeTab === 'history' && renderHistory()}
-          {(activeTab === 'admin-list' || activeTab === 'admin-create') && renderAdminContent()}
+          {(activeTab === 'admin-list' || activeTab === 'admin-create' || activeTab === 'admin-employees') && renderAdminContent()}
         </div>
       </div>
 

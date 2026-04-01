@@ -973,6 +973,26 @@
   overflow-x: auto;
 }
 
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.table-pagination span {
+  font-size: 0.82rem;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+.table-pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1294,6 +1314,19 @@ td .row-child {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+  }
+
+  .table-pagination {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .table-pagination-actions {
+    width: 100%;
+  }
+
+  .table-pagination-actions .btn {
+    flex: 1;
   }
 }
 
