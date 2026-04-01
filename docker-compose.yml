@@ -16,15 +16,14 @@ services:
     networks:
       - inventory-net
 
-  frontend:
+frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
     container_name: inventory-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "8443:443"  
+      - "8443:443"
     depends_on:
       - backend
     networks:
