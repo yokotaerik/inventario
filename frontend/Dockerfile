@@ -9,15 +9,15 @@ COPY frontend/ ./
 
 RUN npm run build
 
-# --- Serve com nginx ---
 FROM nginx:alpine
 
-# Copia o build para o nginx
 COPY --from=build /app/dist /usr/share/nginx/html
-
-# Configuração do nginx para SPA + proxy reverso ao backend
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+# 👇 copia os certificados gerados pelo openssl
+COPY nginx/ssl/cert.pem /etc/nginx/ssl/cert.pem
+COPY nginx/ssl/key.pem /etc/nginx/ssl/key.pem
+
+EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]
