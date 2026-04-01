@@ -16,7 +16,7 @@ services:
     networks:
       - inventory-net
 
-frontend:
+  frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
