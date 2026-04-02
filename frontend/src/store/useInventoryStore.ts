@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/',
+  baseURL: import.meta.env.VITE_API_URL?.trim() || '/',
 })
 
 const TOKEN_KEY = 'inventory_admin_token'
@@ -77,19 +77,44 @@ interface TransactionInfo {
   employee: TransactionEmployee | null
 }
 
+interface BatchItemSummary {
+  id: number
+  name: string
+  reason?: string
+}
+
+export interface BatchOperationResult {
+  message: string
+  mode: string
+  container_item_id: number
+  processed_items: BatchItemSummary[]
+  processed_count: number
+  skipped_items: BatchItemSummary[]
+  skipped_count: number
+}
+
 interface ScanResponse {
   item: Item
   current_transaction: TransactionInfo | null
+  family_container_id: number
+  family_children: Array<Item & { current_transaction: TransactionInfo | null }>
+  family_lent_items: Array<Item & { current_transaction: TransactionInfo | null }>
+  is_container_scan: boolean
 }
 
 export interface TransactionHistory {
   id: number
+  item_id: number | null
+  parent_item_id: number | null
   item_name: string
   item_category: string
   employee_name: string
   destino: string | null
   observacao: string | null
   observacao_checkin: string | null
+  batch_code: string | null
+  batch_root_item_id: number | null
+  batch_root_item_name: string | null
   checkout_time: string | null
   checkin_time: string | null
 }
@@ -156,6 +181,17 @@ interface InventoryState {
   scanItem: (qrHash: string) => Promise<void>
   checkout: (itemId: number, employeeId: number, options?: CheckoutOptions) => Promise<void>
   checkin: (itemId: number, options?: CheckinOptions) => Promise<void>
+  checkoutContainer: (
+    containerItemId: number,
+    employeeId: number,
+    mode: 'full_available' | 'single_child',
+    options?: CheckoutOptions & { targetChildId?: number },
+  ) => Promise<BatchOperationResult | null>
+  checkinContainer: (
+    containerItemId: number,
+    mode: 'all_lent' | 'single_lent',
+    options?: CheckinOptions & { targetItemId?: number; employeeId?: number },
+  ) => Promise<BatchOperationResult | null>
   createItem: (payload: CreateItemPayload) => Promise<boolean>
   updateItem: (itemId: number, payload: UpdateItemPayload) => Promise<boolean>
   deleteItem: (itemId: number, mode: DeleteMode) => Promise<boolean>
@@ -222,7 +258,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     try {
       const response = await api.get<Employee[]>('/employees/active')
       set({ employees: response.data })
-    } catch (_err) {
+    } catch {
       set({ error: 'Erro ao buscar funcionários' })
     }
   },
@@ -240,7 +276,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         headers: { Authorization: `Bearer ${authToken}` },
       })
       set({ allEmployees: response.data, adminLoading: false })
-    } catch (_err) {
+    } catch {
       persistToken(null)
       set({
         adminLoading: false,
@@ -256,7 +292,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     try {
       const response = await api.get<StatusItem[]>('/items/status')
       set({ statusItems: response.data })
-    } catch (_err) {
+    } catch {
       set({ error: 'Erro ao buscar status dos itens' })
     }
   },
@@ -274,7 +310,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         headers: { Authorization: `Bearer ${authToken}` },
       })
       set({ allItems: response.data, adminLoading: false })
-    } catch (_err) {
+    } catch {
       persistToken(null)
       set({
         adminLoading: false,
@@ -290,7 +326,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     try {
       const response = await api.get<TransactionHistory[]>('/transactions/history')
       set({ transactions: response.data })
-    } catch (_err) {
+    } catch {
       set({ error: 'Erro ao buscar histórico' })
     }
   },
@@ -300,7 +336,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     try {
       const response = await api.get<ScanResponse>(`/items/qr/${qrHash}`)
       set({ currentItem: response.data, loading: false })
-    } catch (_err) {
+    } catch {
       set({ error: 'Item não encontrado', loading: false })
     }
   },
@@ -320,8 +356,34 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if (get().isAuthenticated) {
         await get().fetchAllItems()
       }
-    } catch (_err) {
+    } catch {
       set({ error: 'Erro ao realizar retirada' })
+    }
+  },
+
+  checkoutContainer: async (containerItemId, employeeId, mode, options) => {
+    try {
+      const response = await api.post<BatchOperationResult>('/transactions/checkout/container', null, {
+        params: {
+          container_item_id: containerItemId,
+          employee_id: employeeId,
+          mode,
+          target_child_id: options?.targetChildId || undefined,
+          destino: options?.destino || undefined,
+          observacao: options?.observacao || undefined,
+        },
+      })
+
+      set({ currentItem: null, error: null })
+      await get().fetchStatusItems()
+      if (get().isAuthenticated) {
+        await get().fetchAllItems()
+      }
+
+      return response.data
+    } catch (err) {
+      set({ error: getErrorMessage('Erro ao realizar retirada da maleta', err) })
+      return null
     }
   },
 
@@ -338,8 +400,33 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if (get().isAuthenticated) {
         await get().fetchAllItems()
       }
-    } catch (_err) {
+    } catch {
       set({ error: 'Erro ao realizar devolução' })
+    }
+  },
+
+  checkinContainer: async (containerItemId, mode, options) => {
+    try {
+      const response = await api.post<BatchOperationResult>('/transactions/checkin/container', null, {
+        params: {
+          container_item_id: containerItemId,
+          mode,
+          target_item_id: options?.targetItemId || undefined,
+          employee_id: options?.employeeId || undefined,
+          observacao: options?.observacao || undefined,
+        },
+      })
+
+      set({ currentItem: null, error: null })
+      await get().fetchStatusItems()
+      if (get().isAuthenticated) {
+        await get().fetchAllItems()
+      }
+
+      return response.data
+    } catch (err) {
+      set({ error: getErrorMessage('Erro ao realizar devolução da maleta', err) })
+      return null
     }
   },
 

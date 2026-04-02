@@ -39,8 +39,11 @@ class Transaction(Base):
     expected_return = Column(DateTime)
     observacao = Column(String, nullable=True)
     destino = Column(String, nullable=True)
+    batch_code = Column(String, nullable=True, index=True)
+    batch_root_item_id = Column(Integer, ForeignKey("items.id"), nullable=True, index=True)
     checkin_time = Column(DateTime, nullable=True) # Preenchido só na devolução
     observacao_checkin = Column(String, nullable=True)
 
-    item = relationship("Item")
+    item = relationship("Item", foreign_keys=[item_id])
+    batch_root_item = relationship("Item", foreign_keys=[batch_root_item_id])
     employee = relationship("Employee")

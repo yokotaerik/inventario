@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useInventoryStore, type Employee, type Item, type ItemStatus, type StatusItem } from './store/useInventoryStore'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  useInventoryStore,
+  type BatchOperationResult,
+  type Employee,
+  type Item,
+  type ItemStatus,
+  type StatusItem,
+  type TransactionHistory,
+} from './store/useInventoryStore'
 import { QRCodeCanvas } from 'qrcode.react'
 import QRScanner from './components/QRScanner'
 import {
@@ -74,6 +82,22 @@ interface StatusGroup {
   parent: StatusItem
   children: StatusItem[]
 }
+
+type HistoryEntry =
+  | {
+      kind: 'single'
+      key: string
+      transaction: TransactionHistory
+      checkoutTs: number
+    }
+  | {
+      kind: 'batch'
+      key: string
+      batchCode: string
+      batchRootName: string
+      transactions: TransactionHistory[]
+      checkoutTs: number
+    }
 
 function buildStatusGroups(items: StatusItem[]): { groups: StatusGroup[]; standalone: StatusItem[] } {
   const parentMap = new Map<number, StatusGroup>()
@@ -150,11 +174,49 @@ function normalizeScannedValue(rawValue: string): string {
     if (pathMatch?.[1]) {
       return decodeURIComponent(pathMatch[1]).trim()
     }
-  } catch (_err) {
+  } catch {
     // Value is not a URL, keep original raw hash.
   }
 
   return value
+}
+
+function buildHistoryEntries(transactions: TransactionHistory[]): HistoryEntry[] {
+  const batchMap = new Map<string, TransactionHistory[]>()
+  const singles: HistoryEntry[] = []
+
+  for (const transaction of transactions) {
+    const checkoutTs = transaction.checkout_time ? new Date(transaction.checkout_time).getTime() : 0
+    if (!transaction.batch_code) {
+      singles.push({
+        kind: 'single',
+        key: `single-${transaction.id}`,
+        transaction,
+        checkoutTs,
+      })
+      continue
+    }
+
+    const list = batchMap.get(transaction.batch_code) || []
+    list.push(transaction)
+    batchMap.set(transaction.batch_code, list)
+  }
+
+  const batches: HistoryEntry[] = Array.from(batchMap.entries()).map(([batchCode, batchTransactions]) => {
+    const orderedTransactions = [...batchTransactions].sort((a, b) => a.item_name.localeCompare(b.item_name))
+    const first = orderedTransactions[0]
+    const checkoutTs = first?.checkout_time ? new Date(first.checkout_time).getTime() : 0
+    return {
+      kind: 'batch',
+      key: `batch-${batchCode}`,
+      batchCode,
+      batchRootName: first?.batch_root_item_name || first?.item_name || 'Maleta',
+      transactions: orderedTransactions,
+      checkoutTs,
+    }
+  })
+
+  return [...singles, ...batches].sort((a, b) => b.checkoutTs - a.checkoutTs)
 }
 
 /* ─────────── App ─────────── */
@@ -182,6 +244,8 @@ function App() {
     scanItem,
     checkout,
     checkin,
+    checkoutContainer,
+    checkinContainer,
     createItem,
     updateItem,
     deleteItem,
@@ -214,6 +278,13 @@ function App() {
   const [checkoutObs, setCheckoutObs] = useState('')
   // Scanner checkin field
   const [checkinObs, setCheckinObs] = useState('')
+  const [checkoutMode, setCheckoutMode] = useState<'full_available' | 'single_child'>('full_available')
+  const [selectedChildId, setSelectedChildId] = useState<number>(0)
+  const [checkinMode, setCheckinMode] = useState<'all_lent' | 'single_lent'>('all_lent')
+  const [selectedLentItemId, setSelectedLentItemId] = useState<number>(0)
+  const [selectedLentEmployeeId, setSelectedLentEmployeeId] = useState<number>(0)
+  const [containerAction, setContainerAction] = useState<'checkout' | 'checkin'>('checkout')
+  const [batchSummary, setBatchSummary] = useState<BatchOperationResult | null>(null)
   const pullStartYRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -236,11 +307,11 @@ function App() {
 
   /* ─── actions ─── */
 
-  const handleScan = (qrHash: string) => {
+  const handleScan = useCallback((qrHash: string) => {
     const normalized = normalizeScannedValue(qrHash)
     if (!normalized) return
     scanItem(normalized)
-  }
+  }, [scanItem])
 
   const refreshData = async () => {
     await fetchStatusItems()
@@ -264,11 +335,41 @@ function App() {
   const resetScanner = () => {
     clearCurrentItem()
     clearError()
+    setBatchSummary(null)
     setSelectedEmployee(0)
     setCheckoutDestino('')
     setCheckoutObs('')
     setCheckinObs('')
+    setCheckoutMode('full_available')
+    setSelectedChildId(0)
+    setCheckinMode('all_lent')
+    setSelectedLentItemId(0)
+    setSelectedLentEmployeeId(0)
+    setContainerAction('checkout')
   }
+
+  useEffect(() => {
+    if (!currentItem) return
+
+    const firstAvailableChild = currentItem.family_children.find((child) => child.status === 'available')
+    const firstLentItem = currentItem.family_lent_items[0]
+    const hasCheckoutCandidates = currentItem.item.status === 'available' || Boolean(firstAvailableChild)
+    const lentEmployeeIds = Array.from(
+      new Set(
+        currentItem.family_lent_items
+          .map((item) => item.current_transaction?.employee?.id)
+          .filter((employeeId): employeeId is number => Boolean(employeeId)),
+      ),
+    )
+
+    setBatchSummary(null)
+    setCheckoutMode('full_available')
+    setSelectedChildId(firstAvailableChild?.id || 0)
+    setCheckinMode('all_lent')
+    setSelectedLentItemId(firstLentItem?.id || 0)
+    setSelectedLentEmployeeId(lentEmployeeIds.length === 1 ? lentEmployeeIds[0] : 0)
+    setContainerAction(hasCheckoutCandidates ? 'checkout' : 'checkin')
+  }, [currentItem])
 
   const statusSummary = useMemo(() => {
     return statusItems.reduce(
@@ -309,6 +410,8 @@ function App() {
   const sortedEmployees = useMemo(() => {
     return [...allEmployees].sort((left, right) => left.name.localeCompare(right.name))
   }, [allEmployees])
+
+  const historyEntries = useMemo(() => buildHistoryEntries(transactions), [transactions])
 
   const totalEmployeesPages = Math.max(1, Math.ceil(sortedEmployees.length / EMPLOYEES_PER_PAGE))
   const paginatedEmployees = useMemo(() => {
@@ -560,7 +663,7 @@ function App() {
 
     const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`
     window.history.replaceState({}, '', cleanUrl)
-  }, [])
+  }, [handleScan])
 
   /* ─── form handlers ─── */
 
@@ -720,6 +823,15 @@ function App() {
      ═══════════════════════════════════════════ */
 
   const renderScanner = () => {
+    const describeSkipReason = (reason?: string) => {
+      if (!reason) return 'Ignorado'
+      if (reason === 'item_indisponivel') return 'Item indisponível'
+      if (reason === 'transacao_ativa') return 'Já possui empréstimo ativo'
+      if (reason === 'sem_emprestimo_ativo') return 'Sem empréstimo ativo'
+      if (reason === 'emprestado_por_outro_funcionario') return 'Emprestado por outro funcionário'
+      return reason
+    }
+
     if (loading) {
       return (
         <div className="state-box">
@@ -734,6 +846,16 @@ function App() {
         <section className="scanner-section">
           <h2>Escanear Item</h2>
           <p>Aponte a câmera para o QR Code ou digite o código manualmente.</p>
+          {batchSummary && (
+            <div className="action-card batch-summary-card">
+              <p className="info-text">
+                <strong>{batchSummary.message}</strong>
+              </p>
+              <p className="info-text">
+                Processados: <strong>{batchSummary.processed_count}</strong> • Ignorados: <strong>{batchSummary.skipped_count}</strong>
+              </p>
+            </div>
+          )}
           <div className="manual-entry">
             <label htmlFor="manual-code">Código manual</label>
             <div className="inline-group">
@@ -755,6 +877,32 @@ function App() {
       )
     }
 
+    const isContainerScan = currentItem.is_container_scan
+    const availableChildren = currentItem.family_children.filter((child) => child.status === 'available')
+    const lentFamilyItems = currentItem.family_lent_items
+    const skippedBatchItems = batchSummary?.skipped_items ?? []
+    const lentEmployees = Array.from(
+      lentFamilyItems.reduce((acc, item) => {
+        const employee = item.current_transaction?.employee
+        if (employee) {
+          acc.set(employee.id, employee.name)
+        }
+        return acc
+      }, new Map<number, string>()),
+    ).map(([id, name]) => ({ id, name }))
+
+    const hasContainerLentItems = isContainerScan && lentFamilyItems.length > 0
+    const canContainerCheckout = isContainerScan && (currentItem.item.status === 'available' || availableChildren.length > 0)
+    const canContainerCheckin = isContainerScan && hasContainerLentItems
+    const effectiveContainerAction = containerAction === 'checkout' && !canContainerCheckout
+      ? 'checkin'
+      : containerAction === 'checkin' && !canContainerCheckin
+        ? 'checkout'
+        : containerAction
+    const shouldRenderCheckout = isContainerScan
+      ? effectiveContainerAction === 'checkout'
+      : currentItem.item.status === 'available'
+
     return (
       <section className="scan-result">
         <div className="scan-item-card">
@@ -765,8 +913,77 @@ function App() {
           <p>{currentItem.item.category} • {statusLabelMap[currentItem.item.status]}</p>
         </div>
 
-        {currentItem.item.status === 'available' ? (
+        {isContainerScan && (
           <div className="action-card">
+            <div className="form-field">
+              <label htmlFor="container-action-select">Ação</label>
+              <select
+                id="container-action-select"
+                value={effectiveContainerAction}
+                onChange={(e) => setContainerAction(e.target.value as 'checkout' | 'checkin')}
+              >
+                <option value="checkout" disabled={!canContainerCheckout}>Emprestar</option>
+                <option value="checkin" disabled={!canContainerCheckin}>Devolver</option>
+              </select>
+            </div>
+            {!canContainerCheckout && (
+              <p className="mode-warning">
+                Nenhum item disponível para nova retirada nesta maleta.
+              </p>
+            )}
+            {canContainerCheckout && hasContainerLentItems && (
+              <p className="info-text">
+                Já existem itens emprestados nesta maleta. No modo "maleta inteira", os itens já emprestados serão ignorados.
+              </p>
+            )}
+          </div>
+        )}
+
+        {shouldRenderCheckout ? (
+          <div className="action-card">
+            {isContainerScan && (
+              <div className="scan-mode-card">
+                <p className="info-text">
+                  Esta maleta possui <strong>{currentItem.family_children.length}</strong> subitens.
+                </p>
+                <div className="scan-mode-grid">
+                  <button
+                    type="button"
+                    className={`btn ${checkoutMode === 'full_available' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setCheckoutMode('full_available')}
+                  >
+                    Emprestar maleta inteira
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${checkoutMode === 'single_child' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setCheckoutMode('single_child')}
+                  >
+                    Emprestar só um item
+                  </button>
+                </div>
+
+                {checkoutMode === 'single_child' && (
+                  <div className="form-field">
+                    <label htmlFor="single-child-select">Subitem disponível</label>
+                    <select
+                      id="single-child-select"
+                      value={selectedChildId}
+                      onChange={(e) => setSelectedChildId(Number(e.target.value))}
+                    >
+                      <option value={0}>Selecione um subitem</option>
+                      {availableChildren.map((child) => (
+                        <option key={child.id} value={child.id}>{child.name}</option>
+                      ))}
+                    </select>
+                    {availableChildren.length === 0 && (
+                      <p className="mode-warning">Nenhum subitem disponível para retirada individual.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <label htmlFor="employee-select">Funcionário responsável</label>
             <div className="select-wrap">
               <User size={16} />
@@ -812,25 +1029,115 @@ function App() {
             <button
               type="button"
               className="btn btn-primary btn-block"
-              disabled={selectedEmployee === 0}
+              disabled={
+                selectedEmployee === 0
+                || (isContainerScan && checkoutMode === 'single_child' && selectedChildId === 0)
+                || (isContainerScan && checkoutMode === 'single_child' && availableChildren.length === 0)
+              }
               onClick={async () => {
-                await checkout(currentItem.item.id, selectedEmployee, {
-                  destino: checkoutDestino.trim() || undefined,
-                  observacao: checkoutObs.trim() || undefined,
-                })
+                if (isContainerScan) {
+                  const result = await checkoutContainer(
+                    currentItem.family_container_id,
+                    selectedEmployee,
+                    checkoutMode,
+                    {
+                      targetChildId: checkoutMode === 'single_child' ? selectedChildId : undefined,
+                      destino: checkoutDestino.trim() || undefined,
+                      observacao: checkoutObs.trim() || undefined,
+                    },
+                  )
+
+                  if (result) {
+                    setBatchSummary(result)
+                  }
+                } else {
+                  await checkout(currentItem.item.id, selectedEmployee, {
+                    destino: checkoutDestino.trim() || undefined,
+                    observacao: checkoutObs.trim() || undefined,
+                  })
+                }
+
                 setSelectedEmployee(0)
                 setCheckoutDestino('')
                 setCheckoutObs('')
               }}
             >
-              <LogOut size={16} /> Confirmar retirada
+              <LogOut size={16} /> {isContainerScan ? 'Confirmar retirada da maleta' : 'Confirmar retirada'}
             </button>
+
+            {isContainerScan && skippedBatchItems.length > 0 && (
+              <div className="mode-info-box">
+                <p className="mode-info-title">Itens ignorados na última operação</p>
+                {skippedBatchItems.map((item) => (
+                  <p className="mode-info-line" key={`skip-${item.id}`}>
+                    {item.name}: {describeSkipReason(item.reason)}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="action-card">
-            <p className="info-text">
-              Retirado por: <strong>{currentItem.current_transaction?.employee?.name || 'Sem registro'}</strong>
-            </p>
+            {isContainerScan ? (
+              <div className="scan-mode-card">
+                <p className="info-text">
+                  Itens emprestados nesta maleta: <strong>{lentFamilyItems.length}</strong>
+                </p>
+
+                <div className="scan-mode-grid">
+                  <button
+                    type="button"
+                    className={`btn ${checkinMode === 'all_lent' ? 'btn-success' : 'btn-ghost'}`}
+                    onClick={() => setCheckinMode('all_lent')}
+                  >
+                    Devolver tudo emprestado
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${checkinMode === 'single_lent' ? 'btn-success' : 'btn-ghost'}`}
+                    onClick={() => setCheckinMode('single_lent')}
+                  >
+                    Devolver item específico
+                  </button>
+                </div>
+
+                {checkinMode === 'single_lent' && (
+                  <div className="form-field">
+                    <label htmlFor="single-lent-select">Item emprestado</label>
+                    <select
+                      id="single-lent-select"
+                      value={selectedLentItemId}
+                      onChange={(e) => setSelectedLentItemId(Number(e.target.value))}
+                    >
+                      <option value={0}>Selecione um item</option>
+                      {lentFamilyItems.map((item) => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {checkinMode === 'all_lent' && lentEmployees.length > 1 && (
+                  <div className="form-field">
+                    <label htmlFor="lent-employee-select">Devolver itens de qual funcionário</label>
+                    <select
+                      id="lent-employee-select"
+                      value={selectedLentEmployeeId}
+                      onChange={(e) => setSelectedLentEmployeeId(Number(e.target.value))}
+                    >
+                      <option value={0}>Selecione um funcionário</option>
+                      {lentEmployees.map((employee) => (
+                        <option key={employee.id} value={employee.id}>{employee.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="info-text">
+                Retirado por: <strong>{currentItem.current_transaction?.employee?.name || 'Sem registro'}</strong>
+              </p>
+            )}
 
             <div className="form-field">
               <label htmlFor="checkin-obs">
@@ -849,15 +1156,43 @@ function App() {
             <button
               type="button"
               className="btn btn-success btn-block"
+              disabled={
+                (isContainerScan && !canContainerCheckin)
+                || (isContainerScan && checkinMode === 'all_lent' && lentEmployees.length > 1 && selectedLentEmployeeId === 0)
+                || (isContainerScan && checkinMode === 'single_lent' && selectedLentItemId === 0)
+              }
               onClick={async () => {
-                await checkin(currentItem.item.id, {
-                  observacao: checkinObs.trim() || undefined,
-                })
+                if (isContainerScan) {
+                  const result = await checkinContainer(currentItem.family_container_id, checkinMode, {
+                    targetItemId: checkinMode === 'single_lent' ? selectedLentItemId : undefined,
+                    employeeId: checkinMode === 'all_lent' ? (selectedLentEmployeeId || undefined) : undefined,
+                    observacao: checkinObs.trim() || undefined,
+                  })
+                  if (result) {
+                    setBatchSummary(result)
+                  }
+                } else {
+                  await checkin(currentItem.item.id, {
+                    observacao: checkinObs.trim() || undefined,
+                  })
+                }
+
                 setCheckinObs('')
               }}
             >
-              <CheckCircle2 size={16} /> Confirmar devolução
+              <CheckCircle2 size={16} /> {isContainerScan ? 'Confirmar devolução da maleta' : 'Confirmar devolução'}
             </button>
+
+            {isContainerScan && skippedBatchItems.length > 0 && (
+              <div className="mode-info-box">
+                <p className="mode-info-title">Itens não devolvidos na última operação</p>
+                {skippedBatchItems.map((item) => (
+                  <p className="mode-info-line" key={`checkin-skip-${item.id}`}>
+                    {item.name}: {describeSkipReason(item.reason)}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -881,21 +1216,81 @@ function App() {
         </button>
       </div>
 
-      {transactions.length === 0 ? (
+      {historyEntries.length === 0 ? (
         <div className="empty-state">Nenhuma movimentação registrada.</div>
       ) : (
         <div className="history-list">
-          {transactions.map((t) => {
-            const isOpen = t.checkin_time === null
+          {historyEntries.map((entry) => {
+            if (entry.kind === 'single') {
+              const t = entry.transaction
+              const isOpen = t.checkin_time === null
+              return (
+                <div className={`history-card ${isOpen ? 'history-open' : 'history-closed'}`} key={entry.key}>
+                  <div className="history-header">
+                    <div className="history-item-info">
+                      <span className="history-item-name">{t.item_name}</span>
+                      <span className="history-item-cat">{t.item_category}</span>
+                    </div>
+                    <span className={`badge ${isOpen ? 'badge-lent' : 'badge-available'}`}>
+                      {isOpen ? 'Em uso' : 'Devolvido'}
+                    </span>
+                  </div>
+
+                  <div className="history-body">
+                    <div className="history-row">
+                      <ArrowUpRight size={14} className="history-icon-out" />
+                      <div className="history-row-content">
+                        <span className="history-row-label">Retirada</span>
+                        <span className="history-row-value">{formatDate(t.checkout_time)}</span>
+                        <span className="history-row-detail">
+                          <User size={12} /> {t.employee_name}
+                        </span>
+                        {t.destino && (
+                          <span className="history-row-detail">
+                            <MapPin size={12} /> {t.destino}
+                          </span>
+                        )}
+                        {t.observacao && (
+                          <span className="history-row-obs">{t.observacao}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {t.checkin_time && (
+                      <div className="history-row">
+                        <ArrowDownLeft size={14} className="history-icon-in" />
+                        <div className="history-row-content">
+                          <span className="history-row-label">Devolução</span>
+                          <span className="history-row-value">{formatDate(t.checkin_time)}</span>
+                          {t.observacao_checkin && (
+                            <span className="history-row-obs">{t.observacao_checkin}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
+            const openCount = entry.transactions.filter((t) => t.checkin_time === null).length
+            const closedCount = entry.transactions.length - openCount
+            const isOpen = openCount > 0
+            const first = entry.transactions[0]
+            const latestCheckinTime = entry.transactions
+              .map((t) => t.checkin_time)
+              .filter((value): value is string => Boolean(value))
+              .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
+
             return (
-              <div className={`history-card ${isOpen ? 'history-open' : 'history-closed'}`} key={t.id}>
+              <div className={`history-card ${isOpen ? 'history-open' : 'history-closed'}`} key={entry.key}>
                 <div className="history-header">
                   <div className="history-item-info">
-                    <span className="history-item-name">{t.item_name}</span>
-                    <span className="history-item-cat">{t.item_category}</span>
+                    <span className="history-item-name">{entry.batchRootName}</span>
+                    <span className="history-item-cat">Lote ({entry.transactions.length})</span>
                   </div>
                   <span className={`badge ${isOpen ? 'badge-lent' : 'badge-available'}`}>
-                    {isOpen ? 'Em uso' : 'Devolvido'}
+                    {isOpen ? `Em uso (${openCount})` : 'Devolvido'}
                   </span>
                 </div>
 
@@ -904,33 +1299,51 @@ function App() {
                     <ArrowUpRight size={14} className="history-icon-out" />
                     <div className="history-row-content">
                       <span className="history-row-label">Retirada</span>
-                      <span className="history-row-value">{formatDate(t.checkout_time)}</span>
+                      <span className="history-row-value">{formatDate(first.checkout_time)}</span>
                       <span className="history-row-detail">
-                        <User size={12} /> {t.employee_name}
+                        <User size={12} /> {first.employee_name}
                       </span>
-                      {t.destino && (
+                      {first.destino && (
                         <span className="history-row-detail">
-                          <MapPin size={12} /> {t.destino}
+                          <MapPin size={12} /> {first.destino}
                         </span>
                       )}
-                      {t.observacao && (
-                        <span className="history-row-obs">{t.observacao}</span>
+                      {first.observacao && (
+                        <span className="history-row-obs">{first.observacao}</span>
                       )}
                     </div>
                   </div>
 
-                  {t.checkin_time && (
+                  {latestCheckinTime && (
                     <div className="history-row">
                       <ArrowDownLeft size={14} className="history-icon-in" />
                       <div className="history-row-content">
                         <span className="history-row-label">Devolução</span>
-                        <span className="history-row-value">{formatDate(t.checkin_time)}</span>
-                        {t.observacao_checkin && (
-                          <span className="history-row-obs">{t.observacao_checkin}</span>
-                        )}
+                        <span className="history-row-value">{formatDate(latestCheckinTime)}</span>
+                        <span className="history-row-detail">{closedCount}/{entry.transactions.length} itens devolvidos</span>
                       </div>
                     </div>
                   )}
+
+                  <details className="history-batch-details">
+                    <summary>
+                      <span>Ver itens do lote</span>
+                      <ChevronDown size={14} />
+                    </summary>
+                    <div className="history-batch-items">
+                      {entry.transactions.map((t) => {
+                        const itemIsOpen = t.checkin_time === null
+                        return (
+                          <div className="history-batch-item" key={t.id}>
+                            <span className="history-batch-item-name">{t.item_name}</span>
+                            <span className={`badge ${itemIsOpen ? 'badge-lent' : 'badge-available'}`}>
+                              {itemIsOpen ? 'Em uso' : 'Devolvido'}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </details>
                 </div>
               </div>
             )
