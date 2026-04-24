@@ -27,6 +27,15 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
         },
+        '/projects': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
       },
     },
   }

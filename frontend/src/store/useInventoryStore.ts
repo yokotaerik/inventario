@@ -1,591 +1,98 @@
-import { create } from 'zustand'
-import axios from 'axios'
+/**
+ * Facade de compatibilidade — re-exporta dos stores DDD por contexto.
+ * Mantido para que imports legados continuem funcionando durante
+ * qualquer período de transição.
+ */
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL?.trim() || '/',
-})
+// Inventory context
+export { useItemStore } from '../inventory/store/useItemStore'
+export type { Item, ItemStatus, StatusItem } from '../inventory/store/useItemStore'
 
-const TOKEN_KEY = 'inventory_admin_token'
+// Workforce context
+export { useEmployeeStore } from '../workforce/store/useEmployeeStore'
+export type { Employee } from '../workforce/store/useEmployeeStore'
 
-const getStoredToken = (): string | null => {
-  if (typeof window === 'undefined') {
-    return null
+// Loans context
+export { useLoanStore } from '../loans/store/useLoanStore'
+export type { TransactionHistory, BatchOperationResult, ScanResponse } from '../loans/store/useLoanStore'
+
+// Projects context
+export { useProjectStore } from '../projects/store/useProjectStore'
+export type { Project, ProjectLocation, ProjectStatus } from '../projects/store/useProjectStore'
+
+// Re-export combined hook for convenience (merges state from all stores)
+import { useItemStore } from '../inventory/store/useItemStore'
+import { useEmployeeStore } from '../workforce/store/useEmployeeStore'
+import { useLoanStore } from '../loans/store/useLoanStore'
+import { useProjectStore } from '../projects/store/useProjectStore'
+
+/**
+ * Combined hook — retorna estado de todos os contextos num objeto flat.
+ * Use os stores individuais quando possível.
+ */
+export function useInventoryStore() {
+  const item = useItemStore()
+  const employee = useEmployeeStore()
+  const loan = useLoanStore()
+  const project = useProjectStore()
+
+  return {
+    // inventory
+    allItems: item.allItems,
+    statusItems: item.statusItems,
+    fetchAllItems: item.fetchAllItems,
+    fetchStatusItems: item.fetchStatusItems,
+    createItem: item.createItem,
+    updateItem: item.updateItem,
+    deleteItem: item.deleteItem,
+
+    // workforce
+    employees: employee.employees,
+    allEmployees: employee.allEmployees,
+    fetchEmployees: employee.fetchEmployees,
+    fetchAllEmployees: employee.fetchAllEmployees,
+    createEmployee: employee.createEmployee,
+    updateEmployee: employee.updateEmployee,
+    deleteEmployee: employee.deleteEmployee,
+
+    // loans
+    transactions: loan.transactions,
+    currentItem: loan.currentItem,
+    loading: loan.loading,
+    fetchTransactions: loan.fetchTransactions,
+    scanItem: loan.scanItem,
+    checkout: loan.checkout,
+    checkin: loan.checkin,
+    checkoutContainer: loan.checkoutContainer,
+    checkinContainer: loan.checkinContainer,
+    clearCurrentItem: loan.clearCurrentItem,
+
+    // projects
+    projects: project.projects,
+    fetchProjects: project.fetchProjects,
+    createProject: project.createProject,
+    updateProject: project.updateProject,
+    deleteProject: project.deleteProject,
+    createLocation: project.createLocation,
+    updateLocation: project.updateLocation,
+    deleteLocation: project.deleteLocation,
+
+    // admin loading (from any active store)
+    adminLoading: item.adminLoading || employee.adminLoading || project.loading,
+
+    // errors
+    error: item.error || employee.error || loan.error || project.error,
+    authError: item.authError || employee.authError,
+    clearError: () => {
+      item.clearError()
+      employee.clearError()
+      loan.clearError()
+      project.clearError()
+    },
+
+    // auth (managed by App.tsx directly now — stub here for compat)
+    isAuthenticated: false,
+    login: async (_u: string, _p: string) => false,
+    logout: () => {},
   }
-  return window.localStorage.getItem(TOKEN_KEY)
 }
-
-const persistToken = (token: string | null) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  if (token) {
-    window.localStorage.setItem(TOKEN_KEY, token)
-  } else {
-    window.localStorage.removeItem(TOKEN_KEY)
-  }
-}
-
-const getErrorMessage = (fallbackMessage: string, err: unknown): string => {
-  if (axios.isAxiosError(err)) {
-    const detail = err.response?.data?.detail
-    if (typeof detail === 'string' && detail.trim().length > 0) {
-      return detail
-    }
-  }
-  return fallbackMessage
-}
-
-export type ItemStatus = 'available' | 'lent' | 'maintenance'
-
-export interface Employee {
-  id: number
-  name: string
-  department: string
-  is_active: boolean
-}
-
-export interface Item {
-  id: number
-  name: string
-  category: string
-  qr_code_hash: string
-  status: ItemStatus
-  parent_item_id: number | null
-  parent_item_name: string | null
-  has_sub_items: boolean
-}
-
-export interface StatusItem {
-  id: number
-  name: string
-  category: string
-  status: ItemStatus
-  holder: string | null
-  parent_item_id: number | null
-  parent_item_name: string | null
-  has_sub_items: boolean
-}
-
-interface TransactionEmployee {
-  id: number
-  name: string
-}
-
-interface TransactionInfo {
-  id: number
-  employee: TransactionEmployee | null
-}
-
-interface BatchItemSummary {
-  id: number
-  name: string
-  reason?: string
-}
-
-export interface BatchOperationResult {
-  message: string
-  mode: string
-  container_item_id: number
-  processed_items: BatchItemSummary[]
-  processed_count: number
-  skipped_items: BatchItemSummary[]
-  skipped_count: number
-}
-
-interface ScanResponse {
-  item: Item
-  current_transaction: TransactionInfo | null
-  family_container_id: number
-  family_children: Array<Item & { current_transaction: TransactionInfo | null }>
-  family_lent_items: Array<Item & { current_transaction: TransactionInfo | null }>
-  is_container_scan: boolean
-}
-
-export interface TransactionHistory {
-  id: number
-  item_id: number | null
-  parent_item_id: number | null
-  item_name: string
-  item_category: string
-  employee_name: string
-  destino: string | null
-  observacao: string | null
-  observacao_checkin: string | null
-  batch_code: string | null
-  batch_root_item_id: number | null
-  batch_root_item_name: string | null
-  checkout_time: string | null
-  checkin_time: string | null
-}
-
-interface CreateItemPayload {
-  name: string
-  category: string
-  qr_code_hash: string
-  status: ItemStatus
-  parent_item_id: number | null
-}
-
-interface UpdateItemPayload {
-  name: string
-  category: string
-  qr_code_hash: string
-  status: ItemStatus
-  parent_item_id: number | null
-}
-
-interface CreateEmployeePayload {
-  name: string
-  department: string
-  is_active: boolean
-}
-
-interface UpdateEmployeePayload {
-  name: string
-  department: string
-  is_active: boolean
-}
-
-interface CheckoutOptions {
-  destino?: string
-  observacao?: string
-}
-
-interface CheckinOptions {
-  observacao?: string
-}
-
-type DeleteMode = 'move_children' | 'delete_children'
-
-interface InventoryState {
-  employees: Employee[]
-  allEmployees: Employee[]
-  currentItem: ScanResponse | null
-  statusItems: StatusItem[]
-  allItems: Item[]
-  transactions: TransactionHistory[]
-  loading: boolean
-  adminLoading: boolean
-  error: string | null
-  authError: string | null
-  authToken: string | null
-  isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<boolean>
-  logout: () => void
-  fetchEmployees: () => Promise<void>
-  fetchAllEmployees: () => Promise<void>
-  fetchStatusItems: () => Promise<void>
-  fetchAllItems: () => Promise<void>
-  fetchTransactions: () => Promise<void>
-  scanItem: (qrHash: string) => Promise<void>
-  checkout: (itemId: number, employeeId: number, options?: CheckoutOptions) => Promise<void>
-  checkin: (itemId: number, options?: CheckinOptions) => Promise<void>
-  checkoutContainer: (
-    containerItemId: number,
-    employeeId: number,
-    mode: 'full_available' | 'single_child',
-    options?: CheckoutOptions & { targetChildId?: number },
-  ) => Promise<BatchOperationResult | null>
-  checkinContainer: (
-    containerItemId: number,
-    mode: 'all_lent' | 'single_lent',
-    options?: CheckinOptions & { targetItemId?: number; employeeId?: number },
-  ) => Promise<BatchOperationResult | null>
-  createItem: (payload: CreateItemPayload) => Promise<boolean>
-  updateItem: (itemId: number, payload: UpdateItemPayload) => Promise<boolean>
-  deleteItem: (itemId: number, mode: DeleteMode) => Promise<boolean>
-  createEmployee: (payload: CreateEmployeePayload) => Promise<boolean>
-  updateEmployee: (employeeId: number, payload: UpdateEmployeePayload) => Promise<boolean>
-  deleteEmployee: (employeeId: number) => Promise<boolean>
-  clearError: () => void
-  clearCurrentItem: () => void
-}
-
-export const useInventoryStore = create<InventoryState>((set, get) => ({
-  employees: [],
-  allEmployees: [],
-  currentItem: null,
-  statusItems: [],
-  allItems: [],
-  transactions: [],
-  loading: false,
-  adminLoading: false,
-  error: null,
-  authError: null,
-  authToken: getStoredToken(),
-  isAuthenticated: Boolean(getStoredToken()),
-
-  login: async (username, password) => {
-    set({ adminLoading: true, authError: null })
-    try {
-      const response = await api.post<{ token: string }>('/auth/login', { username, password })
-      const token = response.data.token
-      persistToken(token)
-      set({
-        authToken: token,
-        isAuthenticated: true,
-        adminLoading: false,
-        authError: null,
-      })
-      await get().fetchAllItems()
-      await get().fetchAllEmployees()
-      return true
-    } catch (err) {
-      persistToken(null)
-      set({
-        adminLoading: false,
-        authToken: null,
-        isAuthenticated: false,
-        authError: getErrorMessage('Login inválido', err),
-      })
-      return false
-    }
-  },
-
-  logout: () => {
-    persistToken(null)
-    set({
-      authToken: null,
-      isAuthenticated: false,
-      allItems: [],
-      allEmployees: [],
-      authError: null,
-    })
-  },
-
-  fetchEmployees: async () => {
-    try {
-      const response = await api.get<Employee[]>('/employees/active')
-      set({ employees: response.data })
-    } catch {
-      set({ error: 'Erro ao buscar funcionários' })
-    }
-  },
-
-  fetchAllEmployees: async () => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ allEmployees: [] })
-      return
-    }
-
-    set({ adminLoading: true, authError: null })
-    try {
-      const response = await api.get<Employee[]>('/employees', {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ allEmployees: response.data, adminLoading: false })
-    } catch {
-      persistToken(null)
-      set({
-        adminLoading: false,
-        isAuthenticated: false,
-        authToken: null,
-        allEmployees: [],
-        authError: 'Sessão expirada. Faça login novamente.',
-      })
-    }
-  },
-
-  fetchStatusItems: async () => {
-    try {
-      const response = await api.get<StatusItem[]>('/items/status')
-      set({ statusItems: response.data })
-    } catch {
-      set({ error: 'Erro ao buscar status dos itens' })
-    }
-  },
-
-  fetchAllItems: async () => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ allItems: [] })
-      return
-    }
-
-    set({ adminLoading: true, authError: null })
-    try {
-      const response = await api.get<Item[]>('/items', {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ allItems: response.data, adminLoading: false })
-    } catch {
-      persistToken(null)
-      set({
-        adminLoading: false,
-        isAuthenticated: false,
-        authToken: null,
-        allItems: [],
-        authError: 'Sessão expirada. Faça login novamente.',
-      })
-    }
-  },
-
-  fetchTransactions: async () => {
-    try {
-      const response = await api.get<TransactionHistory[]>('/transactions/history')
-      set({ transactions: response.data })
-    } catch {
-      set({ error: 'Erro ao buscar histórico' })
-    }
-  },
-
-  scanItem: async (qrHash: string) => {
-    set({ loading: true, error: null })
-    try {
-      const response = await api.get<ScanResponse>(`/items/qr/${qrHash}`)
-      set({ currentItem: response.data, loading: false })
-    } catch {
-      set({ error: 'Item não encontrado', loading: false })
-    }
-  },
-
-  checkout: async (itemId, employeeId, options) => {
-    try {
-      await api.post('/transactions/checkout', null, {
-        params: {
-          item_id: itemId,
-          employee_id: employeeId,
-          destino: options?.destino || undefined,
-          observacao: options?.observacao || undefined,
-        },
-      })
-      set({ currentItem: null, error: null })
-      await get().fetchStatusItems()
-      if (get().isAuthenticated) {
-        await get().fetchAllItems()
-      }
-    } catch {
-      set({ error: 'Erro ao realizar retirada' })
-    }
-  },
-
-  checkoutContainer: async (containerItemId, employeeId, mode, options) => {
-    try {
-      const response = await api.post<BatchOperationResult>('/transactions/checkout/container', null, {
-        params: {
-          container_item_id: containerItemId,
-          employee_id: employeeId,
-          mode,
-          target_child_id: options?.targetChildId || undefined,
-          destino: options?.destino || undefined,
-          observacao: options?.observacao || undefined,
-        },
-      })
-
-      set({ currentItem: null, error: null })
-      await get().fetchStatusItems()
-      if (get().isAuthenticated) {
-        await get().fetchAllItems()
-      }
-
-      return response.data
-    } catch (err) {
-      set({ error: getErrorMessage('Erro ao realizar retirada da maleta', err) })
-      return null
-    }
-  },
-
-  checkin: async (itemId, options) => {
-    try {
-      await api.post('/transactions/checkin', null, {
-        params: {
-          item_id: itemId,
-          observacao: options?.observacao || undefined,
-        },
-      })
-      set({ currentItem: null, error: null })
-      await get().fetchStatusItems()
-      if (get().isAuthenticated) {
-        await get().fetchAllItems()
-      }
-    } catch {
-      set({ error: 'Erro ao realizar devolução' })
-    }
-  },
-
-  checkinContainer: async (containerItemId, mode, options) => {
-    try {
-      const response = await api.post<BatchOperationResult>('/transactions/checkin/container', null, {
-        params: {
-          container_item_id: containerItemId,
-          mode,
-          target_item_id: options?.targetItemId || undefined,
-          employee_id: options?.employeeId || undefined,
-          observacao: options?.observacao || undefined,
-        },
-      })
-
-      set({ currentItem: null, error: null })
-      await get().fetchStatusItems()
-      if (get().isAuthenticated) {
-        await get().fetchAllItems()
-      }
-
-      return response.data
-    } catch (err) {
-      set({ error: getErrorMessage('Erro ao realizar devolução da maleta', err) })
-      return null
-    }
-  },
-
-  createItem: async (payload) => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ authError: 'Você precisa fazer login para criar itens.' })
-      return false
-    }
-
-    set({ adminLoading: true, authError: null, error: null })
-    try {
-      await api.post('/items', payload, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ adminLoading: false })
-      await get().fetchAllItems()
-      await get().fetchStatusItems()
-      return true
-    } catch (err) {
-      set({
-        adminLoading: false,
-        authError: getErrorMessage('Erro ao criar item', err),
-      })
-      return false
-    }
-  },
-
-  updateItem: async (itemId, payload) => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ authError: 'Você precisa fazer login para editar itens.' })
-      return false
-    }
-
-    set({ adminLoading: true, authError: null, error: null })
-    try {
-      await api.put(`/items/${itemId}`, payload, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ adminLoading: false })
-      await get().fetchAllItems()
-      await get().fetchStatusItems()
-      return true
-    } catch (err) {
-      set({
-        adminLoading: false,
-        authError: getErrorMessage('Erro ao editar item', err),
-      })
-      return false
-    }
-  },
-
-  deleteItem: async (itemId, mode) => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ authError: 'Você precisa fazer login para excluir itens.' })
-      return false
-    }
-
-    set({ adminLoading: true, authError: null, error: null })
-    try {
-      await api.delete(`/items/${itemId}`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        params: { delete_mode: mode },
-      })
-      set({ adminLoading: false })
-      await get().fetchAllItems()
-      await get().fetchStatusItems()
-      return true
-    } catch (err) {
-      set({
-        adminLoading: false,
-        authError: getErrorMessage('Erro ao excluir item', err),
-      })
-      return false
-    }
-  },
-
-  createEmployee: async (payload) => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ authError: 'Você precisa fazer login para criar funcionários.' })
-      return false
-    }
-
-    set({ adminLoading: true, authError: null, error: null })
-    try {
-      await api.post('/employees', payload, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ adminLoading: false })
-      await get().fetchAllEmployees()
-      await get().fetchEmployees()
-      return true
-    } catch (err) {
-      set({
-        adminLoading: false,
-        authError: getErrorMessage('Erro ao criar funcionário', err),
-      })
-      return false
-    }
-  },
-
-  updateEmployee: async (employeeId, payload) => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ authError: 'Você precisa fazer login para editar funcionários.' })
-      return false
-    }
-
-    set({ adminLoading: true, authError: null, error: null })
-    try {
-      await api.put(`/employees/${employeeId}`, payload, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ adminLoading: false })
-      await get().fetchAllEmployees()
-      await get().fetchEmployees()
-      return true
-    } catch (err) {
-      set({
-        adminLoading: false,
-        authError: getErrorMessage('Erro ao editar funcionário', err),
-      })
-      return false
-    }
-  },
-
-  deleteEmployee: async (employeeId) => {
-    const { authToken } = get()
-    if (!authToken) {
-      set({ authError: 'Você precisa fazer login para excluir funcionários.' })
-      return false
-    }
-
-    set({ adminLoading: true, authError: null, error: null })
-    try {
-      await api.delete(`/employees/${employeeId}`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      set({ adminLoading: false })
-      await get().fetchAllEmployees()
-      await get().fetchEmployees()
-      return true
-    } catch (err) {
-      set({
-        adminLoading: false,
-        authError: getErrorMessage('Erro ao excluir funcionário', err),
-      })
-      return false
-    }
-  },
-
-  clearError: () => {
-    set({ error: null, authError: null })
-  },
-
-  clearCurrentItem: () => {
-    set({ currentItem: null })
-  },
-}))

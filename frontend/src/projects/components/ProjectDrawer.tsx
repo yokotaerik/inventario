@@ -1,0 +1,276 @@
+import { useState, type FormEvent } from 'react'
+import { MapPin, Plus, Pencil, Trash2, Package, ChevronDown, FolderOpen } from 'lucide-react'
+import Drawer from '../../shared/components/Drawer'
+import ProjectForm from './ProjectForm'
+import { useProjectStore, type Project } from '../store/useProjectStore'
+
+const statusLabelMap = {
+  active: 'Ativo',
+  inactive: 'Inativo',
+  completed: 'Concluído',
+} as const
+
+interface ProjectDrawerProps {
+  project: Project | null
+  onClose: () => void
+}
+
+export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) {
+  const { createLocation, updateLocation, deleteLocation, deleteProject } = useProjectStore()
+  const [showLocationForm, setShowLocationForm] = useState(false)
+  const [editingLocationId, setEditingLocationId] = useState<number | null>(null)
+  const [locName, setLocName] = useState('')
+  const [locDesc, setLocDesc] = useState('')
+  const [showLocations, setShowLocations] = useState(true)
+
+  const handleAddLocation = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!project) return
+    const success = await createLocation(project.id, {
+      name: locName.trim(),
+      description: locDesc.trim() || null,
+    })
+    if (success) {
+      setLocName('')
+      setLocDesc('')
+      setShowLocationForm(false)
+    }
+  }
+
+  const handleUpdateLocation = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (editingLocationId === null) return
+    const success = await updateLocation(editingLocationId, {
+      name: locName.trim(),
+      description: locDesc.trim() || null,
+    })
+    if (success) {
+      setEditingLocationId(null)
+      setLocName('')
+      setLocDesc('')
+    }
+  }
+
+  const handleDeleteLocation = async (locationId: number) => {
+    if (!window.confirm('Excluir este local?')) return
+    await deleteLocation(locationId)
+  }
+
+  const handleDeleteProject = async () => {
+    if (!project) return
+    if (!window.confirm(`Excluir o projeto "${project.name}"?`)) return
+    const success = await deleteProject(project.id)
+    if (success) onClose()
+  }
+
+  const startEditLocation = (loc: { id: number; name: string; description: string | null }) => {
+    setEditingLocationId(loc.id)
+    setLocName(loc.name)
+    setLocDesc(loc.description || '')
+    setShowLocationForm(false)
+  }
+
+  return (
+    <Drawer open={Boolean(project)} onClose={onClose} title={project?.name ?? ''} width="520px">
+      {project && (
+        <div className="item-drawer-content">
+          {/* Meta */}
+          <div className="drawer-meta-row">
+            <span className="drawer-meta-label">Código</span>
+            <code className="drawer-meta-code">{project.code}</code>
+          </div>
+          <div className="drawer-meta-row">
+            <span className="drawer-meta-label">Status</span>
+            <span className={`badge badge-project-${project.status}`}>
+              {statusLabelMap[project.status]}
+            </span>
+          </div>
+          {project.description && (
+            <div className="drawer-meta-row">
+              <span className="drawer-meta-label">Descrição</span>
+              <span className="drawer-meta-value">{project.description}</span>
+            </div>
+          )}
+          <div className="drawer-meta-row">
+            <span className="drawer-meta-label">Itens vinculados</span>
+            <span className="drawer-meta-value">
+              <Package size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />{' '}
+              {project.item_count}
+            </span>
+          </div>
+
+          <hr className="drawer-divider" />
+
+          {/* Edit form */}
+          <div className="drawer-section">
+            <h3 className="drawer-section-title">Editar Projeto</h3>
+            <ProjectForm
+              mode="edit"
+              project={project}
+              onSuccess={onClose}
+              onCancel={onClose}
+            />
+          </div>
+
+          <hr className="drawer-divider" />
+
+          {/* Locations */}
+          <div className="drawer-section">
+            <div
+              className="drawer-section-title"
+              onClick={() => setShowLocations((v) => !v)}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <MapPin size={15} />
+              Locais ({project.locations.length})
+              <ChevronDown
+                size={14}
+                style={{
+                  transform: showLocations ? 'rotate(0)' : 'rotate(-90deg)',
+                  transition: '0.2s',
+                  marginLeft: 'auto',
+                }}
+              />
+            </div>
+
+            {showLocations && (
+              <>
+                {project.locations.length > 0 && (
+                  <div className="drawer-sub-items">
+                    {project.locations.map((loc) => (
+                      <div key={loc.id} className="drawer-sub-item">
+                        {editingLocationId === loc.id ? (
+                          <form onSubmit={handleUpdateLocation} className="location-edit-form">
+                            <input
+                              type="text"
+                              value={locName}
+                              onChange={(e) => setLocName(e.target.value)}
+                              placeholder="Nome do local"
+                              required
+                              autoFocus
+                            />
+                            <input
+                              type="text"
+                              value={locDesc}
+                              onChange={(e) => setLocDesc(e.target.value)}
+                              placeholder="Descrição (opcional)"
+                            />
+                            <div className="location-edit-actions">
+                              <button type="submit" className="btn btn-primary btn-sm">
+                                Salvar
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => setEditingLocationId(null)}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <>
+                            <div>
+                              <div className="child-name">
+                                <FolderOpen size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                {loc.name}
+                              </div>
+                              {loc.description && (
+                                <div className="child-cat">{loc.description}</div>
+                              )}
+                            </div>
+                            <div className="row-actions">
+                              <button
+                                type="button"
+                                className="btn-icon"
+                                title="Editar"
+                                onClick={() => startEditLocation(loc)}
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-icon"
+                                title="Excluir"
+                                onClick={() => handleDeleteLocation(loc.id)}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {project.locations.length === 0 && !showLocationForm && (
+                  <p className="empty-state" style={{ padding: '8px 0', fontSize: '0.85rem' }}>
+                    Nenhum local cadastrado.
+                  </p>
+                )}
+
+                {showLocationForm ? (
+                  <form onSubmit={handleAddLocation} className="location-add-form">
+                    <input
+                      type="text"
+                      value={locName}
+                      onChange={(e) => setLocName(e.target.value)}
+                      placeholder="Nome do local"
+                      required
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      value={locDesc}
+                      onChange={(e) => setLocDesc(e.target.value)}
+                      placeholder="Descrição (opcional)"
+                    />
+                    <div className="location-edit-actions">
+                      <button type="submit" className="btn btn-primary btn-sm">
+                        <Plus size={14} /> Adicionar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setShowLocationForm(false)
+                          setLocName('')
+                          setLocDesc('')
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ marginTop: 8 }}
+                    onClick={() => {
+                      setShowLocationForm(true)
+                      setEditingLocationId(null)
+                      setLocName('')
+                      setLocDesc('')
+                    }}
+                  >
+                    <Plus size={14} /> Novo local
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Danger zone */}
+          <hr className="drawer-divider" />
+          <div className="drawer-section">
+            <button type="button" className="btn btn-danger btn-sm" onClick={handleDeleteProject}>
+              Excluir projeto
+            </button>
+          </div>
+        </div>
+      )}
+    </Drawer>
+  )
+}
