@@ -12,6 +12,9 @@ class EmployeeRepository:
     def get_by_id(self, employee_id: int) -> Optional[Employee]:
         return self.db.query(Employee).filter(Employee.id == employee_id).first()
 
+    def get_by_email(self, email: str) -> Optional[Employee]:
+        return self.db.query(Employee).filter(Employee.email == email).first()
+
     def list_all(self) -> list[Employee]:
         return self.db.query(Employee).order_by(Employee.name.asc()).all()
 

@@ -15,6 +15,9 @@ class ItemRepository:
     def get_by_qr(self, qr_code_hash: str) -> Optional[Item]:
         return self.db.query(Item).filter(Item.qr_code_hash == qr_code_hash).first()
 
+    def get_by_product_code(self, code: str) -> Optional[Item]:
+        return self.db.query(Item).filter(Item.product_code == code).first()
+
     def get_many_by_ids(self, item_ids: list[int]) -> list[Item]:
         if not item_ids:
             return []

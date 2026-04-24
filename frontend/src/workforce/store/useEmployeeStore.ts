@@ -9,6 +9,8 @@ export interface Employee {
   location_id: number | null
   location_name: string | null
   project_name: string | null
+  email: string | null
+  is_admin: boolean
 }
 
 interface CreateEmployeePayload {
@@ -16,6 +18,9 @@ interface CreateEmployeePayload {
   department: string
   is_active: boolean
   location_id: number | null
+  email?: string | null
+  password?: string | null
+  is_admin?: boolean
 }
 
 interface UpdateEmployeePayload {
@@ -23,6 +28,9 @@ interface UpdateEmployeePayload {
   department: string
   is_active: boolean
   location_id: number | null
+  email?: string | null
+  password?: string | null
+  is_admin?: boolean
 }
 
 interface EmployeeState {

@@ -8,7 +8,7 @@ from ..domain.project import Project, ProjectLocation, ProjectStatus
 # ── Request schemas ──────────────────────────────────────────────────────────
 
 class NewProjectRequest(BaseModel):
-    code: str
+    code: Optional[str] = None
     name: str
     description: Optional[str] = None
     status: ProjectStatus = ProjectStatus.ACTIVE
@@ -39,6 +39,7 @@ def serialize_location(loc: ProjectLocation) -> dict:
         "project_id": loc.project_id,
         "name": loc.name,
         "description": loc.description,
+        "code": loc.code,
     }
 
 
@@ -52,4 +53,5 @@ def serialize_project(project: Project) -> dict:
         "created_at": project.created_at.isoformat() if project.created_at else None,
         "locations": [serialize_location(loc) for loc in (project.locations or [])],
         "item_count": len(project.items) if project.items else 0,
+        "stock_count": len(project.stock_items) if project.stock_items else 0,
     }

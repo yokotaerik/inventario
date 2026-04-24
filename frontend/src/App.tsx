@@ -18,26 +18,41 @@ import BottomNav from './components/BottomNav'
 import './App.css'
 
 // ─── Auth store ───────────────────────────────────────────────────────────────
+interface User {
+  id: number
+  name: string
+  email: string
+  is_admin: boolean
+}
+
 interface AuthState {
   isAuthenticated: boolean
+  user: User | null
   adminLoading: boolean
   authError: string | null
-  login: (username: string, password: string) => Promise<boolean>
-  logout: () => void
+  login: (email: string, password: string) => Promise<boolean>
+  logout: () => Promise<void>
+  hydrateUser: () => Promise<void>
 }
 
 const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: Boolean(getStoredToken()),
+  user: null,
   adminLoading: false,
   authError: null,
 
-  login: async (username, password) => {
+  login: async (email, password) => {
     set({ adminLoading: true, authError: null })
     try {
-      const res = await api.post<{ token: string }>('/auth/login', { username, password })
+      const res = await api.post<{ token: string; user: User }>('/auth/login', { email, password })
       const token = res.data.token
       persistToken(token)
-      set({ isAuthenticated: true, adminLoading: false, authError: null })
+      set({
+        isAuthenticated: true,
+        user: res.data.user,
+        adminLoading: false,
+        authError: null,
+      })
       await useItemStore.getState().fetchAllItems()
       await useEmployeeStore.getState().fetchAllEmployees()
       return true
@@ -46,17 +61,38 @@ const useAuthStore = create<AuthState>((set) => ({
       set({
         adminLoading: false,
         isAuthenticated: false,
+        user: null,
         authError: getErrorMessage('Login inválido', err),
       })
       return false
     }
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // Logout error is not critical
+    }
     persistToken(null)
-    set({ isAuthenticated: false, authError: null })
+    set({ isAuthenticated: false, user: null, authError: null })
     useItemStore.setState({ allItems: [] })
     useEmployeeStore.setState({ allEmployees: [] })
+  },
+
+  hydrateUser: async () => {
+    const token = getStoredToken()
+    if (!token) {
+      set({ isAuthenticated: false, user: null })
+      return
+    }
+    try {
+      const res = await api.get<User>('/auth/me')
+      set({ user: res.data, isAuthenticated: true })
+    } catch {
+      persistToken(null)
+      set({ isAuthenticated: false, user: null })
+    }
   },
 }))
 
@@ -89,7 +125,7 @@ const useTabStore = create<TabState>((set) => ({
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const { isAuthenticated, adminLoading, authError, login, logout } = useAuthStore()
+  const { isAuthenticated, user, adminLoading, authError, login, logout, hydrateUser } = useAuthStore()
   const { activeTab, navigate } = useTabStore()
 
   const { fetchStatusItems, clearError: clearItemError, error: itemError } = useItemStore()
@@ -102,11 +138,12 @@ export default function App() {
     clearLoanError()
   }, [clearItemError, clearLoanError])
 
-  // Initial load
+  // Initial load + hydrate user
   useEffect(() => {
     fetchStatusItems()
     fetchEmployees()
-  }, [fetchStatusItems, fetchEmployees])
+    hydrateUser()
+  }, [fetchStatusItems, fetchEmployees, hydrateUser])
 
   // Admin data after auth
   useEffect(() => {
@@ -139,8 +176,8 @@ export default function App() {
     runRefresh,
   } = usePullToRefresh({ onRefresh: refreshData })
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('scanner')
   }
 
@@ -187,15 +224,18 @@ export default function App() {
             >
               <RefreshCw size={18} className={isRefreshing ? 'spin' : ''} />
             </button>
-            {isAuthenticated && (
-              <button
-                type="button"
-                className="topbar-btn danger-btn"
-                title="Sair"
-                onClick={handleLogout}
-              >
-                <LogOut size={18} />
-              </button>
+            {isAuthenticated && user && (
+              <>
+                <span className="topbar-user">{user.name}</span>
+                <button
+                  type="button"
+                  className="topbar-btn danger-btn"
+                  title="Sair"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={18} />
+                </button>
+              </>
             )}
           </div>
         </header>
@@ -220,6 +260,7 @@ export default function App() {
           {activeTab === 'admin' && (
             <AdminPage
               isAuthenticated={isAuthenticated}
+              user={user}
               adminLoading={adminLoading}
               authError={authError}
               onLogin={login}

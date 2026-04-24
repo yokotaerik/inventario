@@ -12,6 +12,7 @@ class NewItemRequest(BaseModel):
     status: ItemStatus = ItemStatus.AVAILABLE
     parent_item_id: Optional[int] = None
     project_id: Optional[int] = None
+    product_code: Optional[str] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
 
@@ -23,6 +24,7 @@ class UpdateItemRequest(BaseModel):
     status: ItemStatus
     parent_item_id: Optional[int] = None
     project_id: Optional[int] = None
+    product_code: Optional[str] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
 
@@ -55,6 +57,7 @@ def serialize_item(
         "project_id": item.project_id,
         "project_name": project.name if project else None,
         "project_code": project.code if project else None,
+        "product_code": item.product_code,
         "purchase_code": item.purchase_code,
         "purchase_info": item.purchase_info,
     }

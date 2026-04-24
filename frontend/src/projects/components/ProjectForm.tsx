@@ -33,8 +33,9 @@ export default function ProjectForm({ mode, project, onSuccess, onCancel }: Proj
     e.preventDefault()
     let success = false
     if (mode === 'create') {
+      const trimmedCode = form.code.trim()
       success = await createProject({
-        code: form.code.trim(),
+        code: trimmedCode || undefined,
         name: form.name.trim(),
         description: form.description.trim() || null,
         status: form.status,
@@ -58,10 +59,10 @@ export default function ProjectForm({ mode, project, onSuccess, onCancel }: Proj
         <input
           id={`${mode}-project-code`}
           type="text"
-          placeholder="Ex.: PRJ-001"
+          placeholder={mode === 'create' ? 'Deixe vazio para gerar (70XXXX)' : 'Ex.: PRJ-001'}
           value={form.code}
           onChange={(e) => setForm((c) => ({ ...c, code: e.target.value }))}
-          required
+          required={mode === 'edit'}
         />
       </div>
       <div className="form-field">

@@ -173,6 +173,7 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
                             <div>
                               <div className="child-name">
                                 <FolderOpen size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                                {loc.code && <code className="drawer-meta-code" style={{ marginRight: 6 }}>{loc.code}</code>}
                                 {loc.name}
                               </div>
                               {loc.description && (

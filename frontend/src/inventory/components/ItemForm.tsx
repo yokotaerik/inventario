@@ -21,6 +21,7 @@ const defaultForm = {
   status: 'available' as ItemStatus,
   parent_item_id: null as number | null,
   project_id: null as number | null,
+  product_code: null as string | null,
   purchase_code: '',
   purchase_info: '',
 }
@@ -38,6 +39,7 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
           status: item.status,
           parent_item_id: item.parent_item_id,
           project_id: item.project_id,
+          product_code: item.product_code,
           purchase_code: item.purchase_code || '',
           purchase_info: item.purchase_info || '',
         }
@@ -64,6 +66,7 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
       status: form.status,
       parent_item_id: form.parent_item_id,
       project_id: form.project_id,
+      product_code: form.product_code,
       purchase_code: form.purchase_code.trim() || null,
       purchase_info: form.purchase_info.trim() || null,
     }
@@ -127,7 +130,7 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
           </div>
         </div>
         <div className="form-field">
-          <label htmlFor={`${mode}-item-status`}>Status</label>
+          <label htmlFor={`${mode}-item-status`}>Status (emprestável)</label>
           <select
             id={`${mode}-item-status`}
             value={form.status}
@@ -137,6 +140,9 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
             {mode === 'edit' && <option value="lent">Emprestado</option>}
             <option value="maintenance">Manutenção</option>
           </select>
+          <small className="form-help">
+            Para materiais de consumo e quantidade, use Modo Estoque em Novo Cadastro.
+          </small>
         </div>
         <div className="form-field">
           <label htmlFor={`${mode}-item-parent`}>Item pai</label>
@@ -179,6 +185,17 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
               </option>
             ))}
           </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor={`${mode}-item-product-code`}>Código do Produto</label>
+          <input
+            id={`${mode}-item-product-code`}
+            type="text"
+            placeholder={mode === 'create' ? 'Gerado automaticamente ao salvar' : '—'}
+            value={mode === 'edit' ? (form.product_code || '—') : (form.product_code || '')}
+            readOnly
+            disabled
+          />
         </div>
         <div className="form-field">
           <label htmlFor={`${mode}-item-purchase-code`}>Cód. Compra</label>

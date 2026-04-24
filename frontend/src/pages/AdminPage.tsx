@@ -1,37 +1,50 @@
 import { type FormEvent, useState } from 'react'
-import { Shield, Lock, Loader2, Plus, Package, Users, FolderKanban } from 'lucide-react'
+import { Shield, Lock, Loader2, Plus, Package, Users, FolderKanban, Boxes } from 'lucide-react'
 import ItemsTable from '../inventory/components/ItemsTable'
 import ItemForm from '../inventory/components/ItemForm'
 import EmployeeGrid from '../workforce/components/EmployeeGrid'
 import ProjectsGrid from '../projects/components/ProjectsGrid'
+import StockTable from '../stock/components/StockTable'
+import StockForm from '../stock/components/StockForm'
 import { useItemTree } from '../inventory/hooks/useItemTree'
 
-type AdminTab = 'inventory' | 'new-item' | 'employees' | 'projects'
+type AdminTab = 'inventory' | 'new-item' | 'employees' | 'projects' | 'stock'
+type CreateMode = 'loanable' | 'stock'
+
+interface User {
+  id: number
+  name: string
+  email: string
+  is_admin: boolean
+}
 
 interface AdminPageProps {
   isAuthenticated: boolean
+  user: User | null
   adminLoading: boolean
   authError: string | null
-  onLogin: (username: string, password: string) => Promise<boolean>
+  onLogin: (email: string, password: string) => Promise<boolean>
 }
 
 export default function AdminPage({
   isAuthenticated,
+  user,
   adminLoading,
   authError,
   onLogin,
 }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('inventory')
-  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
+  const [createMode, setCreateMode] = useState<CreateMode>('loanable')
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const { parentOptions } = useItemTree()
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const success = await onLogin(loginForm.username.trim(), loginForm.password)
-    if (success) setLoginForm({ username: '', password: '' })
+    const success = await onLogin(loginForm.email.trim(), loginForm.password)
+    if (success) setLoginForm({ email: '', password: '' })
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return (
       <div className="login-card">
         <div className="login-icon">
@@ -42,13 +55,13 @@ export default function AdminPage({
         {authError && <div className="login-error">{authError}</div>}
         <form onSubmit={handleLogin} className="form-stack">
           <div className="form-field">
-            <label htmlFor="username">Usuário</label>
+            <label htmlFor="email">E-mail</label>
             <input
-              id="username"
-              type="text"
-              placeholder="Digite seu usuário"
-              value={loginForm.username}
-              onChange={(e) => setLoginForm((c) => ({ ...c, username: e.target.value }))}
+              id="email"
+              type="email"
+              placeholder="Digite seu e-mail"
+              value={loginForm.email}
+              onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
               required
             />
           </div>
@@ -68,6 +81,18 @@ export default function AdminPage({
             Entrar
           </button>
         </form>
+      </div>
+    )
+  }
+
+  if (!user.is_admin) {
+    return (
+      <div className="login-card">
+        <div className="login-icon">
+          <Shield size={26} />
+        </div>
+        <h2>Acesso Restrito</h2>
+        <p>Área restrita — solicite acesso admin.</p>
       </div>
     )
   }
@@ -92,7 +117,7 @@ export default function AdminPage({
           className={`admin-subnav-btn ${activeTab === 'new-item' ? 'active' : ''}`}
           onClick={() => setActiveTab('new-item')}
         >
-          <Plus size={15} /> Novo Item
+          <Plus size={15} /> Novo Cadastro
         </button>
         <button
           type="button"
@@ -102,6 +127,15 @@ export default function AdminPage({
           onClick={() => setActiveTab('projects')}
         >
           <FolderKanban size={15} /> Projetos
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'stock'}
+          className={`admin-subnav-btn ${activeTab === 'stock' ? 'active' : ''}`}
+          onClick={() => setActiveTab('stock')}
+        >
+          <Boxes size={15} /> Estoque
         </button>
         <button
           type="button"
@@ -119,17 +153,51 @@ export default function AdminPage({
 
       {activeTab === 'new-item' && (
         <div className="create-card">
-          <h2>Novo Item</h2>
-          <p>Cadastre um equipamento com código QR único.</p>
-          <ItemForm
-            mode="create"
-            parentOptions={parentOptions}
-            onSuccess={() => setActiveTab('inventory')}
-          />
+          <h2>Novo Cadastro</h2>
+          <p>Escolha o modo para cadastrar corretamente.</p>
+
+          <div className="create-mode-switch" role="tablist" aria-label="Modo de cadastro">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={createMode === 'loanable'}
+              className={`create-mode-btn ${createMode === 'loanable' ? 'active' : ''}`}
+              onClick={() => setCreateMode('loanable')}
+            >
+              <Package size={15} /> Modo Emprestável
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={createMode === 'stock'}
+              className={`create-mode-btn ${createMode === 'stock' ? 'active' : ''}`}
+              onClick={() => setCreateMode('stock')}
+            >
+              <Boxes size={15} /> Modo Estoque
+            </button>
+          </div>
+
+          <p className="create-mode-help">
+            {createMode === 'loanable'
+              ? 'Emprestável: equipamentos com status (disponível, emprestado e manutenção).'
+              : 'Estoque: materiais por quantidade, sem fluxo de empréstimo.'}
+          </p>
+
+          {createMode === 'loanable' ? (
+            <ItemForm
+              mode="create"
+              parentOptions={parentOptions}
+              onSuccess={() => setActiveTab('inventory')}
+            />
+          ) : (
+            <StockForm mode="create" onSuccess={() => setActiveTab('stock')} />
+          )}
         </div>
       )}
 
       {activeTab === 'projects' && <ProjectsGrid />}
+
+      {activeTab === 'stock' && <StockTable />}
 
       {activeTab === 'employees' && <EmployeeGrid />}
     </section>

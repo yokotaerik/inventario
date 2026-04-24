@@ -8,6 +8,7 @@ export interface ProjectLocation {
   project_id: number
   name: string
   description: string | null
+  code: string | null
 }
 
 export type ProjectStatus = 'active' | 'inactive' | 'completed'
@@ -21,10 +22,11 @@ export interface Project {
   created_at: string | null
   locations: ProjectLocation[]
   item_count: number
+  stock_count: number
 }
 
 interface CreateProjectPayload {
-  code: string
+  code?: string
   name: string
   description?: string | null
   status?: ProjectStatus

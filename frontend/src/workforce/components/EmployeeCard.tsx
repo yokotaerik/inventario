@@ -33,11 +33,17 @@ export default function EmployeeCard({ employee, activeItemCount, onClick }: Emp
           >
             {employee.is_active ? 'Ativo' : 'Inativo'}
           </span>
+          {employee.is_admin && <span className="badge badge-project-active">ADMIN</span>}
         </div>
       </div>
 
       <div className="employee-card-body">
         <div className="employee-name">{employee.name}</div>
+        {employee.email && (
+          <div className="employee-dept" style={{ fontSize: '0.85rem', color: 'var(--ink-secondary)' }}>
+            {employee.email}
+          </div>
+        )}
         {employee.department && (
           <div className="employee-dept">{employee.department}</div>
         )}

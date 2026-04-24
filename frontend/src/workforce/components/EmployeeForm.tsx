@@ -10,7 +10,15 @@ interface EmployeeFormProps {
   onCancel?: () => void
 }
 
-const defaultForm = { name: '', department: '', is_active: true, location_id: null as number | null }
+const defaultForm = {
+  name: '',
+  department: '',
+  is_active: true,
+  location_id: null as number | null,
+  email: '',
+  password: '',
+  is_admin: false,
+}
 
 export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: EmployeeFormProps) {
   const { createEmployee, updateEmployee, adminLoading } = useEmployeeStore()
@@ -23,6 +31,9 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
           department: employee.department || '',
           is_active: employee.is_active,
           location_id: employee.location_id,
+          email: employee.email || '',
+          password: '',
+          is_admin: employee.is_admin,
         }
       : defaultForm,
   )
@@ -48,6 +59,9 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
       department: form.department.trim(),
       is_active: form.is_active,
       location_id: form.location_id,
+      email: form.email.trim() || undefined,
+      password: form.password.trim() || undefined,
+      is_admin: form.is_admin,
     }
     if (mode === 'create') {
       success = await createEmployee(payload)
@@ -111,6 +125,37 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
             </option>
           ))}
         </select>
+      </div>
+      <div className="form-field">
+        <label htmlFor={`${mode}-emp-email`}>E-mail</label>
+        <input
+          id={`${mode}-emp-email`}
+          type="email"
+          placeholder="Ex.: joao@example.com"
+          value={form.email}
+          onChange={(e) => setForm((c) => ({ ...c, email: e.target.value }))}
+        />
+      </div>
+      <div className="form-field">
+        <label htmlFor={`${mode}-emp-password`}>Senha</label>
+        <input
+          id={`${mode}-emp-password`}
+          type="password"
+          placeholder={mode === 'edit' ? 'Deixe vazio para não alterar' : 'Deixe vazio para não definir'}
+          value={form.password}
+          onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
+        />
+      </div>
+      <div className="form-field">
+        <label htmlFor={`${mode}-emp-admin`}>
+          <input
+            id={`${mode}-emp-admin`}
+            type="checkbox"
+            checked={form.is_admin}
+            onChange={(e) => setForm((c) => ({ ...c, is_admin: e.target.checked }))}
+          />
+          {' '}Admin
+        </label>
       </div>
       <div className="form-field full-width item-form-actions">
         <button type="submit" className="btn btn-primary" disabled={adminLoading}>

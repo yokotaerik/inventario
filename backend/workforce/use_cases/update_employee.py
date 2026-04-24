@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from ...shared.exceptions import NotFoundError, ValidationError
+from ...shared.security import hash_password
 from ..domain.employee import Employee
 from ..repository.employee_repository import EmployeeRepository
 from ..schemas.employee_schemas import UpdateEmployeeRequest
@@ -26,6 +27,11 @@ class UpdateEmployeeUseCase:
         employee.department = department
         employee.is_active = payload.is_active
         employee.location_id = payload.location_id
+        employee.email = payload.email
+        employee.is_admin = payload.is_admin
+
+        if payload.password:
+            employee.password_hash = hash_password(payload.password)
 
         self.db.commit()
         self.db.refresh(employee)

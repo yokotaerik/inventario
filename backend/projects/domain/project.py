@@ -30,6 +30,7 @@ class Project(Base):
 
     locations = relationship("ProjectLocation", back_populates="project", cascade="all, delete-orphan")
     items = relationship("Item", back_populates="project")
+    stock_items = relationship("StockItem", back_populates="project")
 
 
 class ProjectLocation(Base):
@@ -44,5 +45,6 @@ class ProjectLocation(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    code = Column(String, unique=True, nullable=True, index=True)
 
     project = relationship("Project", back_populates="locations")

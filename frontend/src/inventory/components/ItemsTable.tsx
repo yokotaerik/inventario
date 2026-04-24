@@ -16,6 +16,14 @@ const statusLabelMap = {
 
 const ITEMS_PER_PAGE = 12
 
+const SortIcon = ({ field, sortField, sortDir }: { field: 'name' | 'category' | 'status' | 'project'; sortField: 'name' | 'category' | 'status' | 'project'; sortDir: 'asc' | 'desc' }) =>
+  sortField === field ? (
+    <ChevronDown
+      size={14}
+      style={{ transform: sortDir === 'desc' ? 'rotate(180deg)' : 'none', transition: '0.2s' }}
+    />
+  ) : null
+
 export default function ItemsTable() {
   const { allItems, adminLoading, fetchAllItems } = useItemStore()
   const { categories } = useItemTree()
@@ -83,14 +91,6 @@ export default function ItemsTable() {
     }
     setPage(1)
   }
-
-  const SortIcon = ({ field }: { field: typeof sortField }) =>
-    sortField === field ? (
-      <ChevronDown
-        size={14}
-        style={{ transform: sortDir === 'desc' ? 'rotate(180deg)' : 'none', transition: '0.2s' }}
-      />
-    ) : null
 
   return (
     <>
@@ -165,17 +165,18 @@ export default function ItemsTable() {
             <thead>
               <tr>
                 <th className="sortable" onClick={() => handleSort('name')}>
-                  Nome <SortIcon field="name" />
+                  Nome <SortIcon field="name" sortField={sortField} sortDir={sortDir} />
                 </th>
                 <th className="sortable" onClick={() => handleSort('category')}>
-                  Categoria <SortIcon field="category" />
+                  Categoria <SortIcon field="category" sortField={sortField} sortDir={sortDir} />
                 </th>
+                <th>Código</th>
                 <th>QR</th>
                 <th className="sortable" onClick={() => handleSort('status')}>
-                  Status <SortIcon field="status" />
+                  Status <SortIcon field="status" sortField={sortField} sortDir={sortDir} />
                 </th>
                 <th className="sortable" onClick={() => handleSort('project')}>
-                  Projeto <SortIcon field="project" />
+                  Projeto <SortIcon field="project" sortField={sortField} sortDir={sortDir} />
                 </th>
                 <th>Ações</th>
               </tr>
@@ -194,6 +195,11 @@ export default function ItemsTable() {
                     )}
                   </td>
                   <td>{item.category}</td>
+                  <td>
+                    <code className="qr-cell">
+                      {item.product_code || '—'}
+                    </code>
+                  </td>
                   <td>
                     <code className="qr-cell">
                       {item.qr_code_hash.length > 10

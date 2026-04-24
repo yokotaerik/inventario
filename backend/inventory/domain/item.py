@@ -24,6 +24,7 @@ class Item(Base):
 
     # Vínculo com projeto
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    product_code = Column(String, unique=True, nullable=True, index=True)
     purchase_code = Column(String, nullable=True)
     purchase_info = Column(String, nullable=True)
 

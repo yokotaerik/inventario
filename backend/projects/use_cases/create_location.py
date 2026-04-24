@@ -4,6 +4,7 @@ from ..domain.project import ProjectLocation
 from ..repository.project_repository import ProjectRepository
 from ..schemas.project_schemas import NewLocationRequest
 from ...shared.exceptions import NotFoundError
+from ...shared.location_code import next_location_code
 
 
 class CreateLocationUseCase:
@@ -20,6 +21,7 @@ class CreateLocationUseCase:
             project_id=project_id,
             name=payload.name,
             description=payload.description,
+            code=next_location_code(self.db, project.code),
         )
         self.repo.create_location(location)
         self.db.commit()

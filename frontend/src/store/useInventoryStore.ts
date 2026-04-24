@@ -92,7 +92,8 @@ export function useInventoryStore() {
 
     // auth (managed by App.tsx directly now — stub here for compat)
     isAuthenticated: false,
-    login: async (_u: string, _p: string) => false,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    login: async (_username: string, _password: string) => false,
     logout: () => {},
   }
 }

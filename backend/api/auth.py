@@ -1,27 +1,36 @@
-import os
-import secrets
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
-ADMIN_USERNAME = os.getenv("INVENTORY_ADMIN_USER", "admin")
-ADMIN_PASSWORD = os.getenv("INVENTORY_ADMIN_PASSWORD", "admin123")
-ADMIN_TOKEN = os.getenv("INVENTORY_ADMIN_TOKEN", "inventory-admin-token")
+from ..auth.repository.session_repository import SessionRepository
+from ..shared.database import get_db
+from ..workforce.domain.employee import Employee
 
 auth_scheme = HTTPBearer(auto_error=False)
 
 
-def require_admin(credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_scheme)):
-    if (
-        credentials is None
-        or credentials.scheme.lower() != "bearer"
-        or not secrets.compare_digest(credentials.credentials, ADMIN_TOKEN)
-    ):
+def get_current_employee(
+    db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(auth_scheme),
+) -> Employee:
+    if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autorizado")
 
+    repo = SessionRepository(db)
+    session = repo.get_by_token(credentials.credentials)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autorizado")
 
-def check_admin_credentials(username: str, password: str) -> bool:
-    valid_user = secrets.compare_digest(username, ADMIN_USERNAME)
-    valid_password = secrets.compare_digest(password, ADMIN_PASSWORD)
-    return valid_user and valid_password
+    return session.employee
+
+
+def require_auth(employee: Employee = Depends(get_current_employee)) -> Employee:
+    return employee
+
+
+def require_admin(employee: Employee = Depends(get_current_employee)) -> Employee:
+    if not employee.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+    return employee

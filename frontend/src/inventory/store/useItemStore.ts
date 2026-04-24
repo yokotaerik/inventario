@@ -15,6 +15,7 @@ export interface Item {
   project_id: number | null
   project_name: string | null
   project_code: string | null
+  product_code: string | null
   purchase_code: string | null
   purchase_info: string | null
 }
@@ -40,6 +41,7 @@ interface CreateItemPayload {
   status: ItemStatus
   parent_item_id: number | null
   project_id: number | null
+  product_code: string | null
   purchase_code: string | null
   purchase_info: string | null
 }
@@ -51,6 +53,7 @@ interface UpdateItemPayload {
   status: ItemStatus
   parent_item_id: number | null
   project_id: number | null
+  product_code: string | null
   purchase_code: string | null
   purchase_info: string | null
 }
