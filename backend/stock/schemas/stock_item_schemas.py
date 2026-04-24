@@ -11,8 +11,8 @@ class NewStockItemRequest(BaseModel):
     units: int = 1
     quantity: Optional[int] = None
     qr_code_hash: Optional[str] = None
-    product_code: Optional[str] = None
     project_id: Optional[int] = None
+    location_id: Optional[int] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
 
@@ -22,6 +22,7 @@ class UpdateStockItemRequest(BaseModel):
     category: str
     quantity: Optional[int] = None
     project_id: Optional[int] = None
+    location_id: Optional[int] = None
     qr_code_hash: Optional[str] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
@@ -39,6 +40,8 @@ def serialize_stock_item(stock_item: StockItem) -> dict:
         "project_id": stock_item.project_id,
         "project_name": project.name if project else None,
         "project_code": project.code if project else None,
+        "location_id": stock_item.location_id,
+        "location_name": stock_item.location.name if stock_item.location else None,
         "purchase_code": stock_item.purchase_code,
         "purchase_info": stock_item.purchase_info,
         "created_at": stock_item.created_at.isoformat() if stock_item.created_at else None,

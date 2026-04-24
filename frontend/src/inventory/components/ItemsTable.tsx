@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Pencil, Download, Search, RefreshCw, ChevronDown, FolderKanban } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { Pencil, Download, Search, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { useItemStore, type Item } from '../store/useItemStore'
 import { useItemTree } from '../hooks/useItemTree'
-import { useProjectStore } from '../../projects/store/useProjectStore'
 import { buildItemDeepLink } from '../../shared/utils/formatters'
 import { downloadQrByCanvasId } from '../../shared/utils/qr'
 import ItemDrawer from './ItemDrawer'
@@ -16,7 +15,7 @@ const statusLabelMap = {
 
 const ITEMS_PER_PAGE = 12
 
-const SortIcon = ({ field, sortField, sortDir }: { field: 'name' | 'category' | 'status' | 'project'; sortField: 'name' | 'category' | 'status' | 'project'; sortDir: 'asc' | 'desc' }) =>
+const SortIcon = ({ field, sortField, sortDir }: { field: 'name' | 'category' | 'status'; sortField: 'name' | 'category' | 'status'; sortDir: 'asc' | 'desc' }) =>
   sortField === field ? (
     <ChevronDown
       size={14}
@@ -27,19 +26,24 @@ const SortIcon = ({ field, sortField, sortDir }: { field: 'name' | 'category' | 
 export default function ItemsTable() {
   const { allItems, adminLoading, fetchAllItems } = useItemStore()
   const { categories } = useItemTree()
-  const { projects, fetchProjects } = useProjectStore()
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
-  const [filterProject, setFilterProject] = useState<string>('all')
   const [page, setPage] = useState(1)
-  const [sortField, setSortField] = useState<'name' | 'category' | 'status' | 'project'>('name')
+  const [sortField, setSortField] = useState<'name' | 'category' | 'status'>('name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
 
-  useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
+  const toggleExpand = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpandedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   // Keep selected item in sync with updated data
   const syncedItem = useMemo(() => {
@@ -53,16 +57,11 @@ export default function ItemsTable() {
       .filter((item) => {
         if (filterStatus !== 'all' && item.status !== filterStatus) return false
         if (filterCategory !== 'all' && item.category !== filterCategory) return false
-        if (filterProject !== 'all') {
-          if (filterProject === 'none' && item.project_id !== null) return false
-          if (filterProject !== 'none' && String(item.project_id) !== filterProject) return false
-        }
         if (!q) return true
         return (
           item.name.toLowerCase().includes(q) ||
           item.category.toLowerCase().includes(q) ||
           item.qr_code_hash.toLowerCase().includes(q) ||
-          (item.project_name || '').toLowerCase().includes(q) ||
           (item.purchase_code || '').toLowerCase().includes(q)
         )
       })
@@ -71,16 +70,21 @@ export default function ItemsTable() {
         if (sortField === 'name') cmp = a.name.localeCompare(b.name)
         else if (sortField === 'category') cmp = a.category.localeCompare(b.category)
         else if (sortField === 'status') cmp = a.status.localeCompare(b.status)
-        else if (sortField === 'project') cmp = (a.project_name || '').localeCompare(b.project_name || '')
         return sortDir === 'asc' ? cmp : -cmp
       })
-  }, [allItems, search, filterStatus, filterCategory, filterProject, sortField, sortDir])
+  }, [allItems, search, filterStatus, filterCategory, sortField, sortDir])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
-  const paginated = useMemo(() => {
+  const rootItems = useMemo(() => {
+    return filtered.filter(
+      (i) => i.parent_item_id === null || !filtered.some((f) => f.id === i.parent_item_id)
+    )
+  }, [filtered])
+
+  const totalPages = Math.max(1, Math.ceil(rootItems.length / ITEMS_PER_PAGE))
+  const paginatedRoots = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE
-    return filtered.slice(start, start + ITEMS_PER_PAGE)
-  }, [filtered, page])
+    return rootItems.slice(start, start + ITEMS_PER_PAGE)
+  }, [rootItems, page])
 
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {
@@ -128,20 +132,6 @@ export default function ItemsTable() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
-        <select
-          className="filter-select"
-          value={filterProject}
-          onChange={(e) => { setFilterProject(e.target.value); setPage(1) }}
-          aria-label="Filtrar por projeto"
-        >
-          <option value="all">Todos projetos</option>
-          <option value="none">Sem projeto</option>
-          {projects.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              [{p.code}] {p.name}
-            </option>
-          ))}
-        </select>
         <button
           type="button"
           className="btn btn-ghost btn-sm"
@@ -155,7 +145,7 @@ export default function ItemsTable() {
 
       <div className="table-count">
         {filtered.length} {filtered.length === 1 ? 'item' : 'itens'}
-        {search || filterStatus !== 'all' || filterCategory !== 'all' || filterProject !== 'all' ? ' (filtrado)' : ''}
+        {search || filterStatus !== 'all' || filterCategory !== 'all' ? ' (filtrado)' : ''}
       </div>
 
       {/* Table */}
@@ -175,85 +165,102 @@ export default function ItemsTable() {
                 <th className="sortable" onClick={() => handleSort('status')}>
                   Status <SortIcon field="status" sortField={sortField} sortDir={sortDir} />
                 </th>
-                <th className="sortable" onClick={() => handleSort('project')}>
-                  Projeto <SortIcon field="project" sortField={sortField} sortDir={sortDir} />
-                </th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {paginated.map((item) => (
-                <tr key={item.id} className="table-row-clickable" onClick={() => setSelectedItem(item)}>
-                  <td>
-                    {item.parent_item_id ? (
-                      <span className="row-child">↳ {item.name}</span>
-                    ) : (
-                      <span className="row-name">{item.name}</span>
-                    )}
-                    {item.parent_item_name && (
-                      <div className="row-parent-label">{item.parent_item_name}</div>
-                    )}
-                  </td>
-                  <td>{item.category}</td>
-                  <td>
-                    <code className="qr-cell">
-                      {item.product_code || '—'}
-                    </code>
-                  </td>
-                  <td>
-                    <code className="qr-cell">
-                      {item.qr_code_hash.length > 10
-                        ? item.qr_code_hash.slice(0, 10) + '…'
-                        : item.qr_code_hash}
-                    </code>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${item.status}`}>
-                      {statusLabelMap[item.status]}
-                    </span>
-                  </td>
-                  <td>
-                    {item.project_name ? (
-                      <span className="project-cell">
-                        <FolderKanban size={12} />
-                        <span>{item.project_name}</span>
+              {paginatedRoots.map((item) => {
+                const isExpanded = expandedItems.has(item.id)
+                const children = allItems.filter((child) => child.parent_item_id === item.id)
+
+                const renderRow = (rowItem: Item, isChild = false) => (
+                  <tr
+                    key={rowItem.id}
+                    className={`table-row-clickable ${isChild ? 'child-row' : ''}`}
+                    onClick={() => setSelectedItem(rowItem)}
+                    style={isChild ? { backgroundColor: 'var(--bg-card-hover)', opacity: 0.95 } : {}}
+                  >
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: isChild ? 24 : 0 }}>
+                        {!isChild && rowItem.has_sub_items && (
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            onClick={(e) => toggleExpand(rowItem.id, e)}
+                            style={{ padding: 2, marginRight: 4 }}
+                          >
+                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          </button>
+                        )}
+                        {!isChild && !rowItem.has_sub_items && <span style={{ width: 22, display: 'inline-block' }} />}
+                        
+                        {isChild && <span className="row-child" style={{ color: 'var(--text-muted)' }}>↳</span>}
+                        <span className="row-name">{rowItem.name}</span>
+                      </div>
+                      {!isChild && rowItem.parent_item_name && (
+                        <div className="row-parent-label" style={{ marginLeft: 28 }}>
+                          (Em {rowItem.parent_item_name})
+                        </div>
+                      )}
+                    </td>
+                    <td>{rowItem.category}</td>
+                    <td>
+                      <code className="qr-cell">
+                        {rowItem.product_code || '—'}
+                      </code>
+                    </td>
+                    <td>
+                      <code className="qr-cell">
+                        {rowItem.qr_code_hash.length > 10
+                          ? rowItem.qr_code_hash.slice(0, 10) + '…'
+                          : rowItem.qr_code_hash}
+                      </code>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${rowItem.status}`}>
+                        {statusLabelMap[rowItem.status]}
                       </span>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
-                  </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <div className="row-actions">
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        title="Ver / Editar"
-                        onClick={() => setSelectedItem(item)}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        title="Download QR"
-                        onClick={() =>
-                          downloadQrByCanvasId(`item-qr-${item.id}`, item.qr_code_hash)
-                        }
-                      >
-                        <Download size={14} />
-                      </button>
-                      <QRCodeCanvas
-                        id={`item-qr-${item.id}`}
-                        value={buildItemDeepLink(item.qr_code_hash)}
-                        size={56}
-                        includeMargin
-                        level="H"
-                        className="row-hidden-qr"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Ver / Editar"
+                          onClick={() => setSelectedItem(rowItem)}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Download QR"
+                          onClick={() =>
+                            downloadQrByCanvasId(`item-qr-${rowItem.id}`, rowItem.qr_code_hash)
+                          }
+                        >
+                          <Download size={14} />
+                        </button>
+                        <QRCodeCanvas
+                          id={`item-qr-${rowItem.id}`}
+                          value={buildItemDeepLink(rowItem.qr_code_hash)}
+                          size={56}
+                          includeMargin
+                          level="H"
+                          className="row-hidden-qr"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+
+                return (
+                  <React.Fragment key={item.id}>
+                    {renderRow(item, false)}
+                    {isExpanded && children.map((child) => renderRow(child, true))}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>

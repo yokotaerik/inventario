@@ -54,6 +54,7 @@ class CreateStockItemUseCase:
                 qr_code_hash=product_code,
                 product_code=product_code,
                 project_id=payload.project_id,
+                location_id=payload.location_id,
                 purchase_code=payload.purchase_code,
                 purchase_info=payload.purchase_info,
             )

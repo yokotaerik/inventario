@@ -14,8 +14,10 @@ class StockItem(Base):
     product_code = Column(String, unique=True, nullable=True, index=True)
     qr_code_hash = Column(String, unique=True, nullable=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    location_id = Column(Integer, ForeignKey("project_locations.id"), nullable=True, index=True)
     purchase_code = Column(String, nullable=True)
     purchase_info = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="stock_items")
+    location = relationship("ProjectLocation", back_populates="stock_items")

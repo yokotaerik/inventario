@@ -22,12 +22,9 @@ class Item(Base):
     status = Column(Enum(ItemStatus), default=ItemStatus.AVAILABLE)
     parent_item_id = Column(Integer, ForeignKey("items.id"), nullable=True, index=True)
 
-    # Vínculo com projeto
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     product_code = Column(String, unique=True, nullable=True, index=True)
     purchase_code = Column(String, nullable=True)
     purchase_info = Column(String, nullable=True)
 
     parent_item = relationship("Item", remote_side=[id], back_populates="sub_items")
     sub_items = relationship("Item", back_populates="parent_item")
-    project = relationship("Project", back_populates="items")

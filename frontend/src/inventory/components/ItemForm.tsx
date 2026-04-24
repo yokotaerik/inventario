@@ -1,8 +1,7 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { Loader2, Plus, Pencil, Sparkles, Download } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { useItemStore, type Item, type ItemStatus } from '../store/useItemStore'
-import { useProjectStore } from '../../projects/store/useProjectStore'
 import { generateRandomCode, downloadQrByCanvasId } from '../../shared/utils/qr'
 import { buildItemDeepLink } from '../../shared/utils/formatters'
 
@@ -20,7 +19,6 @@ const defaultForm = {
   qr_code_hash: '',
   status: 'available' as ItemStatus,
   parent_item_id: null as number | null,
-  project_id: null as number | null,
   product_code: null as string | null,
   purchase_code: '',
   purchase_info: '',
@@ -28,7 +26,6 @@ const defaultForm = {
 
 export default function ItemForm({ mode, item, parentOptions, onSuccess, onCancel }: ItemFormProps) {
   const { createItem, updateItem, adminLoading } = useItemStore()
-  const { projects, fetchProjects } = useProjectStore()
 
   const [form, setForm] = useState(
     mode === 'edit' && item
@@ -38,7 +35,6 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
           qr_code_hash: item.qr_code_hash,
           status: item.status,
           parent_item_id: item.parent_item_id,
-          project_id: item.project_id,
           product_code: item.product_code,
           purchase_code: item.purchase_code || '',
           purchase_info: item.purchase_info || '',
@@ -46,15 +42,9 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
       : defaultForm,
   )
 
-  useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
-
   const hashValue = form.qr_code_hash.trim() || 'SEM-CODIGO'
   const previewValue = buildItemDeepLink(hashValue)
   const qrCanvasId = mode === 'create' ? 'item-form-qr-create' : `item-form-qr-${item?.id}`
-
-  const activeProjects = projects.filter((p) => p.status === 'active')
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -65,7 +55,6 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
       qr_code_hash: form.qr_code_hash.trim(),
       status: form.status,
       parent_item_id: form.parent_item_id,
-      project_id: form.project_id,
       product_code: form.product_code,
       purchase_code: form.purchase_code.trim() || null,
       purchase_info: form.purchase_info.trim() || null,
@@ -165,27 +154,7 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
           </select>
         </div>
 
-        {/* ── Project & Purchase ──────────────────────────────────────── */}
-        <div className="form-field">
-          <label htmlFor={`${mode}-item-project`}>Projeto</label>
-          <select
-            id={`${mode}-item-project`}
-            value={form.project_id === null ? '' : String(form.project_id)}
-            onChange={(e) =>
-              setForm((c) => ({
-                ...c,
-                project_id: e.target.value ? Number(e.target.value) : null,
-              }))
-            }
-          >
-            <option value="">Nenhum</option>
-            {activeProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                [{p.code}] {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* ── Purchase ──────────────────────────────────────── */}
         <div className="form-field">
           <label htmlFor={`${mode}-item-product-code`}>Código do Produto</label>
           <input

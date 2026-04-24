@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, Package, FolderKanban } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ChevronDown, Package } from 'lucide-react'
 import { useItemStore, type StatusItem } from '../store/useItemStore'
-import { useProjectStore } from '../../projects/store/useProjectStore'
 
 const statusLabelMap = {
   available: 'Disponível',
@@ -58,25 +57,15 @@ function ChildSummaryBadges({ children }: { children: StatusItem[] }) {
 
 export default function ItemStatusView() {
   const { statusItems } = useItemStore()
-  const { projects, fetchProjects } = useProjectStore()
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
   const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterProject, setFilterProject] = useState<string>('all')
-
-  useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
 
   const filtered = useMemo<StatusItem[]>(() => {
     return statusItems.filter((i) => {
       if (filterStatus !== 'all' && i.status !== filterStatus) return false
-      if (filterProject !== 'all') {
-        if (filterProject === 'none' && i.project_id !== null) return false
-        if (filterProject !== 'none' && String(i.project_id) !== filterProject) return false
-      }
       return true
     })
-  }, [statusItems, filterStatus, filterProject])
+  }, [statusItems, filterStatus])
 
   const { groups, standalone } = useMemo(() => buildStatusGroups(filtered), [filtered])
 
@@ -160,20 +149,6 @@ export default function ItemStatusView() {
             {opt.label}
           </button>
         ))}
-        <select
-          className="filter-select filter-select-inline"
-          value={filterProject}
-          onChange={(e) => setFilterProject(e.target.value)}
-          aria-label="Filtrar por projeto"
-        >
-          <option value="all">Todos projetos</option>
-          <option value="none">Sem projeto</option>
-          {projects.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              [{p.code}] {p.name}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Groups */}
@@ -190,11 +165,6 @@ export default function ItemStatusView() {
                 <Package size={16} />
                 {group.parent.name}
                 <span className="group-category">{group.parent.category}</span>
-                {group.parent.project_name && (
-                  <span className="group-project-tag">
-                    <FolderKanban size={11} /> {group.parent.project_name}
-                  </span>
-                )}
               </div>
               <div className="group-right">
                 <span className={`badge badge-${parentStatus}`}>
@@ -223,11 +193,6 @@ export default function ItemStatusView() {
                         <div>
                           <div className="child-name">{child.name}</div>
                           <div className="child-cat">{child.category}</div>
-                          {child.project_name && (
-                            <div className="child-project">
-                              <FolderKanban size={11} /> {child.project_name}
-                            </div>
-                          )}
                           {child.status === 'lent' && (
                             <div className="holder-tag">Com: {child.holder || '—'}</div>
                           )}
@@ -253,11 +218,6 @@ export default function ItemStatusView() {
             <div className="item-info">
               <h3>{item.name}</h3>
               <p>{item.category}</p>
-              {item.project_name && (
-                <div className="child-project">
-                  <FolderKanban size={11} /> {item.project_name}
-                </div>
-              )}
               {item.status === 'lent' && (
                 <div className="holder-tag">Com: {item.holder || '—'}</div>
               )}

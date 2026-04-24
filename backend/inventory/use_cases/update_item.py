@@ -28,7 +28,6 @@ class UpdateItemUseCase:
         item.qr_code_hash = payload.qr_code_hash
         item.status = payload.status
         item.parent_item_id = payload.parent_item_id
-        item.project_id = payload.project_id
         item.purchase_code = payload.purchase_code
         item.purchase_info = payload.purchase_info
 

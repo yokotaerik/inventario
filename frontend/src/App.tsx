@@ -1,5 +1,5 @@
-import { useCallback, useEffect } from 'react'
-import { Package, RefreshCw, LogOut, X } from 'lucide-react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Package, RefreshCw, LogOut, X, Lock, Loader2 } from 'lucide-react'
 import { ScanLine, ClipboardList, Shield } from 'lucide-react'
 import { create } from 'zustand'
 
@@ -9,10 +9,11 @@ import { useItemStore } from './inventory/store/useItemStore'
 import { useEmployeeStore } from './workforce/store/useEmployeeStore'
 import { useLoanStore } from './loans/store/useLoanStore'
 
-import ScannerView from './loans/components/ScannerView'
-import HistoryView from './loans/components/HistoryView'
 import ItemStatusView from './inventory/components/ItemStatusView'
-import AdminPage from './pages/AdminPage'
+import LoansPage from './pages/LoansPage'
+import InventoryPage from './pages/InventoryPage'
+import ProjectsGrid from './projects/components/ProjectsGrid'
+import EmployeeGrid from './workforce/components/EmployeeGrid'
 import BottomNav from './components/BottomNav'
 
 import './App.css'
@@ -97,19 +98,21 @@ const useAuthStore = create<AuthState>((set) => ({
 }))
 
 // ─── Tab routing ─────────────────────────────────────────────────────────────
-type TabKey = 'status' | 'scanner' | 'history' | 'admin'
+type TabKey = 'loans' | 'inventory' | 'projects' | 'workforce' | 'status'
 
 const tabs = [
-  { key: 'scanner', label: 'Scanner', icon: ScanLine },
-  { key: 'history', label: 'Histórico', icon: ClipboardList },
-  { key: 'admin', label: 'Admin', icon: Shield },
+  { key: 'loans', label: 'Empréstimos', icon: ClipboardList },
+  { key: 'inventory', label: 'Inventário', icon: Package },
+  { key: 'projects', label: 'Projetos', icon: ScanLine }, // changed icon? Let's use FolderKanban or keep it simple. Let's import FolderKanban, Users from lucide-react. I will do that in another edit if needed, or I can use existing icons.
+  { key: 'workforce', label: 'Equipe', icon: Shield },
 ] as const
 
 const pageTitleMap: Record<TabKey, string> = {
   status: 'Status Geral',
-  scanner: 'Scanner QR',
-  history: 'Histórico',
-  admin: 'Administração',
+  loans: 'Empréstimos',
+  inventory: 'Inventário',
+  projects: 'Projetos',
+  workforce: 'Equipe',
 }
 
 // ─── Tab state store ──────────────────────────────────────────────────────────
@@ -119,7 +122,7 @@ interface TabState {
 }
 
 const useTabStore = create<TabState>((set) => ({
-  activeTab: 'scanner',
+  activeTab: 'loans',
   navigate: (tab) => set({ activeTab: tab }),
 }))
 
@@ -137,6 +140,13 @@ export default function App() {
     clearItemError()
     clearLoanError()
   }, [clearItemError, clearLoanError])
+
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
+  const handleLoginSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const success = await login(loginForm.email.trim(), loginForm.password)
+    if (success) setLoginForm({ email: '', password: '' })
+  }
 
   // Initial load + hydrate user
   useEffect(() => {
@@ -156,7 +166,7 @@ export default function App() {
   const refreshData = useCallback(async () => {
     await fetchStatusItems()
     await fetchEmployees()
-    if (activeTab === 'history') await fetchTransactions()
+    if (activeTab === 'loans') await fetchTransactions()
     if (isAuthenticated) {
       await useItemStore.getState().fetchAllItems()
       await useEmployeeStore.getState().fetchAllEmployees()
@@ -178,7 +188,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await logout()
-    navigate('scanner')
+    navigate('loans')
   }
 
   return (
@@ -255,16 +265,51 @@ export default function App() {
         {/* Page content */}
         <div className="content">
           {activeTab === 'status' && <ItemStatusView />}
-          {activeTab === 'scanner' && <ScannerView />}
-          {activeTab === 'history' && <HistoryView />}
-          {activeTab === 'admin' && (
-            <AdminPage
-              isAuthenticated={isAuthenticated}
-              user={user}
-              adminLoading={adminLoading}
-              authError={authError}
-              onLogin={login}
-            />
+          
+          {/* Protected Modules */}
+          {activeTab !== 'status' && !isAuthenticated ? (
+             <div className="login-card">
+               <div className="login-icon">
+                 <Shield size={26} />
+               </div>
+               <h2>Acesso Restrito</h2>
+               <p>Faça login para acessar este módulo.</p>
+               <form onSubmit={handleLoginSubmit} className="form-stack" style={{ marginTop: 16 }}>
+                 <div className="form-field">
+                   <label htmlFor="email">E-mail</label>
+                   <input
+                     id="email"
+                     type="email"
+                     placeholder="Digite seu e-mail"
+                     value={loginForm.email}
+                     onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
+                     required
+                   />
+                 </div>
+                 <div className="form-field">
+                   <label htmlFor="password">Senha</label>
+                   <input
+                     id="password"
+                     type="password"
+                     placeholder="Digite sua senha"
+                     value={loginForm.password}
+                     onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
+                     required
+                   />
+                 </div>
+                 <button type="submit" className="btn btn-primary btn-block" disabled={adminLoading}>
+                   {adminLoading ? <Loader2 size={16} className="spin" /> : <Lock size={16} />}
+                   Entrar
+                 </button>
+               </form>
+             </div>
+          ) : (
+             <>
+               {activeTab === 'loans' && <LoansPage />}
+               {activeTab === 'inventory' && <InventoryPage />}
+               {activeTab === 'projects' && <ProjectsGrid />}
+               {activeTab === 'workforce' && <EmployeeGrid />}
+             </>
           )}
         </div>
       </div>

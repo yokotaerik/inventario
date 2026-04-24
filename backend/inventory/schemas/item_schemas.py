@@ -11,7 +11,6 @@ class NewItemRequest(BaseModel):
     qr_code_hash: str
     status: ItemStatus = ItemStatus.AVAILABLE
     parent_item_id: Optional[int] = None
-    project_id: Optional[int] = None
     product_code: Optional[str] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
@@ -23,7 +22,6 @@ class UpdateItemRequest(BaseModel):
     qr_code_hash: str
     status: ItemStatus
     parent_item_id: Optional[int] = None
-    project_id: Optional[int] = None
     product_code: Optional[str] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
@@ -44,7 +42,6 @@ def serialize_item(
     parent_name_by_id: dict[int, str],
     child_count_by_parent: dict[int, int],
 ) -> dict:
-    project = item.project
     return {
         "id": item.id,
         "name": item.name,
@@ -54,9 +51,6 @@ def serialize_item(
         "parent_item_id": item.parent_item_id,
         "parent_item_name": parent_name_by_id.get(item.parent_item_id),
         "has_sub_items": child_count_by_parent.get(item.id, 0) > 0,
-        "project_id": item.project_id,
-        "project_name": project.name if project else None,
-        "project_code": project.code if project else None,
         "product_code": item.product_code,
         "purchase_code": item.purchase_code,
         "purchase_info": item.purchase_info,

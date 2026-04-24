@@ -16,6 +16,7 @@ const defaultForm = {
   units: 1,
   product_code: null as string | null,
   project_id: null as number | null,
+  location_id: null as number | null,
   purchase_code: '',
   purchase_info: '',
 }
@@ -32,6 +33,7 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
           units: 1,
           product_code: item.product_code,
           project_id: item.project_id,
+          location_id: item.location_id,
           purchase_code: item.purchase_code || '',
           purchase_info: item.purchase_info || '',
         }
@@ -43,6 +45,8 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
   }, [fetchProjects])
 
   const activeProjects = projects.filter((p) => p.status === 'active')
+  const selectedProject = activeProjects.find((p) => p.id === form.project_id)
+  const projectLocations = selectedProject?.locations || []
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -52,6 +56,7 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
       name: form.name.trim(),
       category: form.category.trim(),
       project_id: form.project_id,
+      location_id: form.location_id,
       purchase_code: form.purchase_code.trim() || null,
       purchase_info: form.purchase_info.trim() || null,
     }
@@ -124,6 +129,7 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
               setForm((c) => ({
                 ...c,
                 project_id: e.target.value ? Number(e.target.value) : null,
+                location_id: null,
               }))
             }
             required={mode === 'create'}
@@ -136,6 +142,28 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
             ))}
           </select>
         </div>
+        {form.project_id && (
+          <div className="form-field">
+            <label htmlFor={`${mode}-stock-location`}>Local do Projeto</label>
+            <select
+              id={`${mode}-stock-location`}
+              value={form.location_id === null ? '' : String(form.location_id)}
+              onChange={(e) =>
+                setForm((c) => ({
+                  ...c,
+                  location_id: e.target.value ? Number(e.target.value) : null,
+                }))
+              }
+            >
+              <option value="">Nenhum (Qualquer local)</option>
+              {projectLocations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="form-field">
           <label htmlFor={`${mode}-stock-product-code`}>Código do Produto</label>
           <input

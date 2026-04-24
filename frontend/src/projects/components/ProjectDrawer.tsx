@@ -3,6 +3,7 @@ import { MapPin, Plus, Pencil, Trash2, Package, ChevronDown, FolderOpen } from '
 import Drawer from '../../shared/components/Drawer'
 import ProjectForm from './ProjectForm'
 import { useProjectStore, type Project } from '../store/useProjectStore'
+import { useStockStore } from '../../stock/store/useStockStore'
 
 const statusLabelMap = {
   active: 'Ativo',
@@ -22,6 +23,19 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
   const [locName, setLocName] = useState('')
   const [locDesc, setLocDesc] = useState('')
   const [showLocations, setShowLocations] = useState(true)
+  const [expandedLocs, setExpandedLocs] = useState<Set<number>>(new Set())
+
+  const { stockItems } = useStockStore()
+  const projectItems = project ? stockItems.filter(i => i.project_id === project.id) : []
+
+  const toggleLoc = (id: number) => {
+    setExpandedLocs(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const handleAddLocation = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -92,10 +106,10 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
             </div>
           )}
           <div className="drawer-meta-row">
-            <span className="drawer-meta-label">Itens vinculados</span>
+            <span className="drawer-meta-label">Estoque alocado</span>
             <span className="drawer-meta-value">
               <Package size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />{' '}
-              {project.item_count}
+              {project.stock_count}
             </span>
           </div>
 
@@ -171,13 +185,25 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
                         ) : (
                           <>
                             <div>
-                              <div className="child-name">
-                                <FolderOpen size={13} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+                              <div
+                                className="child-name"
+                                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                onClick={() => toggleLoc(loc.id)}
+                              >
+                                <ChevronDown
+                                  size={13}
+                                  style={{
+                                    marginRight: 4,
+                                    transform: expandedLocs.has(loc.id) ? 'rotate(0)' : 'rotate(-90deg)',
+                                    transition: '0.2s',
+                                  }}
+                                />
+                                <FolderOpen size={13} style={{ marginRight: 4 }} />
                                 {loc.code && <code className="drawer-meta-code" style={{ marginRight: 6 }}>{loc.code}</code>}
                                 {loc.name}
                               </div>
                               {loc.description && (
-                                <div className="child-cat">{loc.description}</div>
+                                <div className="child-cat" style={{ marginLeft: 22 }}>{loc.description}</div>
                               )}
                             </div>
                             <div className="row-actions">
@@ -199,6 +225,26 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
                               </button>
                             </div>
                           </>
+                        )}
+                        
+                        {/* Items under this location */}
+                        {expandedLocs.has(loc.id) && (
+                          <div style={{ marginLeft: 20, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {projectItems.filter(i => i.location_id === loc.id).map(item => (
+                              <div key={item.id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', padding: '4px 8px', backgroundColor: 'var(--bg-elevated)', borderRadius: 4, gap: 8 }}>
+                                <Package size={12} className="text-muted" />
+                                <span style={{ flex: 1 }}>{item.name}</span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                                    Qtd: {item.quantity}
+                                  </span>
+                              </div>
+                            ))}
+                            {projectItems.filter(i => i.location_id === loc.id).length === 0 && (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: 4 }}>
+                                Nenhum item alocado aqui.
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -260,6 +306,26 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
                   </button>
                 )}
               </>
+            )}
+            
+            {/* Items without specific location */}
+            {project && projectItems.filter(i => i.location_id === null).length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, paddingLeft: 4 }}>
+                  Itens sem local específico ({projectItems.filter(i => i.location_id === null).length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {projectItems.filter(i => i.location_id === null).map(item => (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', padding: '6px 10px', backgroundColor: 'var(--bg-elevated)', borderRadius: 6, gap: 8 }}>
+                      <Package size={14} className="text-muted" />
+                      <span style={{ flex: 1 }}>{item.name}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        Qtd: {item.quantity}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

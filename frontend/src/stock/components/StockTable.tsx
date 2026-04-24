@@ -173,7 +173,10 @@ export default function StockTable() {
                     {item.project_name ? (
                       <span className="project-cell">
                         <FolderKanban size={12} />
-                        <span>{item.project_name}</span>
+                        <span>
+                          {item.project_name}
+                          {item.location_name && ` / ${item.location_name}`}
+                        </span>
                       </span>
                     ) : (
                       <span className="text-muted">—</span>

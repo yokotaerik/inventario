@@ -11,6 +11,8 @@ export interface StockItem {
   project_id: number | null
   project_name: string | null
   project_code: string | null
+  location_id: number | null
+  location_name: string | null
   purchase_code: string | null
   purchase_info: string | null
   created_at: string | null
@@ -24,6 +26,7 @@ interface CreateStockItemPayload {
   qr_code_hash: string | null
   product_code: string | null
   project_id: number | null
+  location_id: number | null
   purchase_code: string | null
   purchase_info: string | null
 }
@@ -32,6 +35,7 @@ interface UpdateStockItemPayload {
   name: string
   category: string
   project_id: number | null
+  location_id: number | null
   purchase_code: string | null
   purchase_info: string | null
 }

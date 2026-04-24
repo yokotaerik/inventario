@@ -52,6 +52,5 @@ def serialize_project(project: Project) -> dict:
         "status": project.status.value,
         "created_at": project.created_at.isoformat() if project.created_at else None,
         "locations": [serialize_location(loc) for loc in (project.locations or [])],
-        "item_count": len(project.items) if project.items else 0,
         "stock_count": len(project.stock_items) if project.stock_items else 0,
     }

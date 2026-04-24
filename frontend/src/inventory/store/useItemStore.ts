@@ -12,9 +12,6 @@ export interface Item {
   parent_item_id: number | null
   parent_item_name: string | null
   has_sub_items: boolean
-  project_id: number | null
-  project_name: string | null
-  project_code: string | null
   product_code: string | null
   purchase_code: string | null
   purchase_info: string | null
@@ -29,9 +26,6 @@ export interface StatusItem {
   parent_item_id: number | null
   parent_item_name: string | null
   has_sub_items: boolean
-  project_id: number | null
-  project_name: string | null
-  project_code: string | null
 }
 
 interface CreateItemPayload {
@@ -40,7 +34,6 @@ interface CreateItemPayload {
   qr_code_hash: string
   status: ItemStatus
   parent_item_id: number | null
-  project_id: number | null
   product_code: string | null
   purchase_code: string | null
   purchase_info: string | null
@@ -52,7 +45,6 @@ interface UpdateItemPayload {
   qr_code_hash: string
   status: ItemStatus
   parent_item_id: number | null
-  project_id: number | null
   product_code: string | null
   purchase_code: string | null
   purchase_info: string | null

@@ -21,7 +21,6 @@ export interface Project {
   status: ProjectStatus
   created_at: string | null
   locations: ProjectLocation[]
-  item_count: number
   stock_count: number
 }
 
