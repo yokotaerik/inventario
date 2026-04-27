@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 interface DrawerProps {
@@ -40,7 +41,7 @@ export default function Drawer({ open, onClose, title, children, width = '480px'
     [onClose],
   )
 
-  return (
+  const drawerNode = (
     <div className={`drawer-overlay ${open ? 'drawer-open' : ''}`} onClick={handleOverlayClick}>
       <div
         ref={panelRef}
@@ -62,4 +63,8 @@ export default function Drawer({ open, onClose, title, children, width = '480px'
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return null
+
+  return createPortal(drawerNode, document.body)
 }

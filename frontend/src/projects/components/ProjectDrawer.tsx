@@ -155,20 +155,24 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
                       <div key={loc.id} className="drawer-sub-item">
                         {editingLocationId === loc.id ? (
                           <form onSubmit={handleUpdateLocation} className="location-edit-form">
-                            <input
-                              type="text"
-                              value={locName}
-                              onChange={(e) => setLocName(e.target.value)}
-                              placeholder="Nome do local"
-                              required
-                              autoFocus
-                            />
-                            <input
-                              type="text"
-                              value={locDesc}
-                              onChange={(e) => setLocDesc(e.target.value)}
-                              placeholder="Descrição (opcional)"
-                            />
+                            <div className="form-field">
+                              <input
+                                type="text"
+                                value={locName}
+                                onChange={(e) => setLocName(e.target.value)}
+                                placeholder="Nome do local"
+                                required
+                                autoFocus
+                              />
+                            </div>
+                            <div className="form-field">
+                              <input
+                                type="text"
+                                value={locDesc}
+                                onChange={(e) => setLocDesc(e.target.value)}
+                                placeholder="Descrição (opcional)"
+                              />
+                            </div>
                             <div className="location-edit-actions">
                               <button type="submit" className="btn btn-primary btn-sm">
                                 Salvar
@@ -259,20 +263,24 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
 
                 {showLocationForm ? (
                   <form onSubmit={handleAddLocation} className="location-add-form">
-                    <input
-                      type="text"
-                      value={locName}
-                      onChange={(e) => setLocName(e.target.value)}
-                      placeholder="Nome do local"
-                      required
-                      autoFocus
-                    />
-                    <input
-                      type="text"
-                      value={locDesc}
-                      onChange={(e) => setLocDesc(e.target.value)}
-                      placeholder="Descrição (opcional)"
-                    />
+                    <div className="form-field">
+                      <input
+                        type="text"
+                        value={locName}
+                        onChange={(e) => setLocName(e.target.value)}
+                        placeholder="Nome do local"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="form-field">
+                      <input
+                        type="text"
+                        value={locDesc}
+                        onChange={(e) => setLocDesc(e.target.value)}
+                        placeholder="Descrição (opcional)"
+                      />
+                    </div>
                     <div className="location-edit-actions">
                       <button type="submit" className="btn btn-primary btn-sm">
                         <Plus size={14} /> Adicionar

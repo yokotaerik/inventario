@@ -10,6 +10,7 @@ class NewStockItemRequest(BaseModel):
     category: str
     units: int = 1
     quantity: Optional[int] = None
+    product_code: Optional[str] = None
     qr_code_hash: Optional[str] = None
     project_id: Optional[int] = None
     location_id: Optional[int] = None
@@ -23,6 +24,7 @@ class UpdateStockItemRequest(BaseModel):
     quantity: Optional[int] = None
     project_id: Optional[int] = None
     location_id: Optional[int] = None
+    product_code: Optional[str] = None
     qr_code_hash: Optional[str] = None
     purchase_code: Optional[str] = None
     purchase_info: Optional[str] = None
