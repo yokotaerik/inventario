@@ -4,7 +4,9 @@
       "Bash(python *)",
       "Bash(npm run *)",
       "Bash(grep -n \"^\\\\\\\\..*-card\" /c/Users/Autaza/Desktop/MC_Softwares/inventory-app/frontend/src/App.css)",
-      "Bash(pip install *)"
+      "Bash(pip install *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

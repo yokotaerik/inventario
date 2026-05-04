@@ -11,6 +11,16 @@ export interface ProjectLocation {
   code: string | null
 }
 
+export interface AnyDeskEntry {
+  id: number
+  project_id: number
+  machine_name: string
+  anydesk_id: string
+  password: string | null
+  description: string | null
+  created_at: string | null
+}
+
 export type ProjectStatus = 'active' | 'inactive' | 'completed'
 
 export interface Project {
@@ -48,10 +58,25 @@ interface UpdateLocationPayload {
   description?: string | null
 }
 
+interface CreateAnyDeskPayload {
+  machine_name: string
+  anydesk_id: string
+  password?: string | null
+  description?: string | null
+}
+
+interface UpdateAnyDeskPayload {
+  machine_name: string
+  anydesk_id: string
+  password?: string | null
+  description?: string | null
+}
+
 // ── Store ────────────────────────────────────────────────────────────────────
 
 interface ProjectState {
   projects: Project[]
+  anyDeskEntries: Record<number, AnyDeskEntry[]>
   loading: boolean
   error: string | null
 
@@ -64,11 +89,17 @@ interface ProjectState {
   updateLocation: (locationId: number, payload: UpdateLocationPayload) => Promise<boolean>
   deleteLocation: (locationId: number) => Promise<boolean>
 
+  fetchAnyDeskEntries: (projectId: number) => Promise<void>
+  createAnyDeskEntry: (projectId: number, payload: CreateAnyDeskPayload) => Promise<boolean>
+  updateAnyDeskEntry: (entryId: number, projectId: number, payload: UpdateAnyDeskPayload) => Promise<boolean>
+  deleteAnyDeskEntry: (entryId: number, projectId: number) => Promise<boolean>
+
   clearError: () => void
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
+  anyDeskEntries: {},
   loading: false,
   error: null,
 
@@ -167,6 +198,60 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return true
     } catch (err) {
       set({ loading: false, error: getErrorMessage('Erro ao excluir local', err) })
+      return false
+    }
+  },
+
+  fetchAnyDeskEntries: async (projectId) => {
+    try {
+      const res = await api.get<AnyDeskEntry[]>(`/projects/${projectId}/anydesk`)
+      set(state => ({ anyDeskEntries: { ...state.anyDeskEntries, [projectId]: res.data } }))
+    } catch {
+      set({ error: 'Erro ao buscar entradas AnyDesk' })
+    }
+  },
+
+  createAnyDeskEntry: async (projectId, payload) => {
+    const token = getStoredToken()
+    if (!token) { set({ error: 'Login necessário' }); return false }
+    set({ loading: true, error: null })
+    try {
+      await api.post(`/projects/${projectId}/anydesk`, payload, { headers: authHeaders(token) })
+      set({ loading: false })
+      await get().fetchAnyDeskEntries(projectId)
+      return true
+    } catch (err) {
+      set({ loading: false, error: getErrorMessage('Erro ao criar entrada AnyDesk', err) })
+      return false
+    }
+  },
+
+  updateAnyDeskEntry: async (entryId, projectId, payload) => {
+    const token = getStoredToken()
+    if (!token) { set({ error: 'Login necessário' }); return false }
+    set({ loading: true, error: null })
+    try {
+      await api.put(`/projects/anydesk/${entryId}`, payload, { headers: authHeaders(token) })
+      set({ loading: false })
+      await get().fetchAnyDeskEntries(projectId)
+      return true
+    } catch (err) {
+      set({ loading: false, error: getErrorMessage('Erro ao atualizar entrada AnyDesk', err) })
+      return false
+    }
+  },
+
+  deleteAnyDeskEntry: async (entryId, projectId) => {
+    const token = getStoredToken()
+    if (!token) { set({ error: 'Login necessário' }); return false }
+    set({ loading: true, error: null })
+    try {
+      await api.delete(`/projects/anydesk/${entryId}`, { headers: authHeaders(token) })
+      set({ loading: false })
+      await get().fetchAnyDeskEntries(projectId)
+      return true
+    } catch (err) {
+      set({ loading: false, error: getErrorMessage('Erro ao excluir entrada AnyDesk', err) })
       return false
     }
   },

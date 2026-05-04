@@ -7,8 +7,11 @@ from ...projects.schemas.project_schemas import (
     UpdateProjectRequest,
     NewLocationRequest,
     UpdateLocationRequest,
+    NewAnyDeskRequest,
+    UpdateAnyDeskRequest,
     serialize_project,
     serialize_location,
+    serialize_anydesk_entry,
 )
 from ...projects.use_cases.create_project import CreateProjectUseCase
 from ...projects.use_cases.update_project import UpdateProjectUseCase
@@ -17,6 +20,9 @@ from ...projects.use_cases.list_projects import ListProjectsUseCase
 from ...projects.use_cases.create_location import CreateLocationUseCase
 from ...projects.use_cases.update_location import UpdateLocationUseCase
 from ...projects.use_cases.delete_location import DeleteLocationUseCase
+from ...projects.use_cases.create_anydesk import CreateAnyDeskEntryUseCase
+from ...projects.use_cases.update_anydesk import UpdateAnyDeskEntryUseCase
+from ...projects.use_cases.delete_anydesk import DeleteAnyDeskEntryUseCase
 from ...shared.database import get_db
 from ..auth import require_admin
 
@@ -102,4 +108,36 @@ def update_location(location_id: int, payload: UpdateLocationRequest, db: Sessio
 @router.delete("/locations/{location_id}", response_model=None, dependencies=[Depends(require_admin)])
 def delete_location(location_id: int, db: Session = Depends(get_db)):
     message = DeleteLocationUseCase(db).execute(location_id)
+    return {"message": message}
+
+
+# ── AnyDesk ───────────────────────────────────────────────────────────────────
+
+@router.get("/{project_id}/anydesk", response_model=None)
+def list_anydesk_entries(project_id: int, db: Session = Depends(get_db)):
+    repo = ProjectRepository(db)
+    entries = repo.list_anydesk_entries(project_id)
+    return [serialize_anydesk_entry(e) for e in entries]
+
+
+@router.post(
+    "/{project_id}/anydesk",
+    status_code=status.HTTP_201_CREATED,
+    response_model=None,
+    dependencies=[Depends(require_admin)],
+)
+def create_anydesk_entry(project_id: int, payload: NewAnyDeskRequest, db: Session = Depends(get_db)):
+    entry = CreateAnyDeskEntryUseCase(db).execute(project_id, payload)
+    return serialize_anydesk_entry(entry)
+
+
+@router.put("/anydesk/{entry_id}", response_model=None, dependencies=[Depends(require_admin)])
+def update_anydesk_entry(entry_id: int, payload: UpdateAnyDeskRequest, db: Session = Depends(get_db)):
+    entry = UpdateAnyDeskEntryUseCase(db).execute(entry_id, payload)
+    return serialize_anydesk_entry(entry)
+
+
+@router.delete("/anydesk/{entry_id}", response_model=None, dependencies=[Depends(require_admin)])
+def delete_anydesk_entry(entry_id: int, db: Session = Depends(get_db)):
+    message = DeleteAnyDeskEntryUseCase(db).execute(entry_id)
     return {"message": message}

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .inventory.domain.item import Item  # noqa: F401
 from .workforce.domain.employee import Employee  # noqa: F401
 from .loans.domain.loan import Loan  # noqa: F401
-from .projects.domain.project import Project, ProjectLocation  # noqa: F401
+from .projects.domain.project import Project, ProjectLocation, AnyDeskEntry  # noqa: F401
 from .stock.domain.stock_item import StockItem  # noqa: F401
 from .auth.domain.session import Session  # noqa: F401
 

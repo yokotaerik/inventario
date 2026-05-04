@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from ..domain.project import Project, ProjectLocation
+from ..domain.project import Project, ProjectLocation, AnyDeskEntry
 
 
 class ProjectRepository:
@@ -51,3 +51,24 @@ class ProjectRepository:
 
     def delete_location(self, location: ProjectLocation) -> None:
         self.db.delete(location)
+
+    # ── AnyDesk ───────────────────────────────────────────────────────────────
+
+    def list_anydesk_entries(self, project_id: int) -> list[AnyDeskEntry]:
+        return (
+            self.db.query(AnyDeskEntry)
+            .filter(AnyDeskEntry.project_id == project_id)
+            .order_by(AnyDeskEntry.machine_name)
+            .all()
+        )
+
+    def get_anydesk_entry_by_id(self, entry_id: int) -> Optional[AnyDeskEntry]:
+        return self.db.query(AnyDeskEntry).filter(AnyDeskEntry.id == entry_id).first()
+
+    def create_anydesk_entry(self, entry: AnyDeskEntry) -> AnyDeskEntry:
+        self.db.add(entry)
+        self.db.flush()
+        return entry
+
+    def delete_anydesk_entry(self, entry: AnyDeskEntry) -> None:
+        self.db.delete(entry)

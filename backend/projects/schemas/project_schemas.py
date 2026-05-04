@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from ..domain.project import Project, ProjectLocation, ProjectStatus
+from ..domain.project import Project, ProjectLocation, ProjectStatus, AnyDeskEntry
 
 
 # ── Request schemas ──────────────────────────────────────────────────────────
@@ -31,6 +31,20 @@ class UpdateLocationRequest(BaseModel):
     description: Optional[str] = None
 
 
+class NewAnyDeskRequest(BaseModel):
+    machine_name: str
+    anydesk_id: str
+    password: Optional[str] = None
+    description: Optional[str] = None
+
+
+class UpdateAnyDeskRequest(BaseModel):
+    machine_name: str
+    anydesk_id: str
+    password: Optional[str] = None
+    description: Optional[str] = None
+
+
 # ── Serializers ──────────────────────────────────────────────────────────────
 
 def serialize_location(loc: ProjectLocation) -> dict:
@@ -40,6 +54,18 @@ def serialize_location(loc: ProjectLocation) -> dict:
         "name": loc.name,
         "description": loc.description,
         "code": loc.code,
+    }
+
+
+def serialize_anydesk_entry(entry: AnyDeskEntry) -> dict:
+    return {
+        "id": entry.id,
+        "project_id": entry.project_id,
+        "machine_name": entry.machine_name,
+        "anydesk_id": entry.anydesk_id,
+        "password": entry.password,
+        "description": entry.description,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
     }
 
 

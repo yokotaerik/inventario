@@ -8,11 +8,15 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - INVENTORY_ADMIN_USER=admin
-      - INVENTORY_ADMIN_PASSWORD=admin123
-      - INVENTORY_ADMIN_TOKEN=inventory-admin-token
-    ports:
-      - "8000:8000"
+      - INVENTORY_ADMIN_USER=${INVENTORY_ADMIN_USER:-admin}
+      - INVENTORY_ADMIN_PASSWORD=${INVENTORY_ADMIN_PASSWORD:-admin123}
+      - INVENTORY_ADMIN_TOKEN=${INVENTORY_ADMIN_TOKEN:-inventory-admin-token}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/projects')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - inventory-net
 
@@ -23,9 +27,14 @@ services:
     container_name: inventory-frontend
     restart: unless-stopped
     ports:
-      - "8443:443"
+      - "80:80"
+      - "443:443"
+    # Para usar certificados reais, monte a pasta abaixo:
+    # volumes:
+    #   - ./ssl:/etc/nginx/ssl:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - inventory-net
 

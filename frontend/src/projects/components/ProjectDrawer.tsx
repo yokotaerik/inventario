@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { MapPin, Plus, Pencil, Trash2, Package, ChevronDown, FolderOpen } from 'lucide-react'
 import Drawer from '../../shared/components/Drawer'
 import ProjectForm from './ProjectForm'
+import AnyDeskTable from './AnyDeskTable'
 import { useProjectStore, type Project } from '../store/useProjectStore'
 import { useStockStore } from '../../stock/store/useStockStore'
 
@@ -336,6 +337,10 @@ export default function ProjectDrawer({ project, onClose }: ProjectDrawerProps) 
               </div>
             )}
           </div>
+
+          {/* AnyDesk */}
+          <hr className="drawer-divider" />
+          <AnyDeskTable projectId={project.id} />
 
           {/* Danger zone */}
           <hr className="drawer-divider" />
