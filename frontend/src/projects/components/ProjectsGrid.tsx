@@ -124,8 +124,8 @@ export default function ProjectsGrid() {
                 {project.locations.length === 1 ? 'local' : 'locais'}
               </span>
               <span className="project-card-stat">
-                <Package size={13} /> {project.item_count}{' '}
-                {project.item_count === 1 ? 'item' : 'itens'}
+                <Package size={13} /> {project.stock_count}{' '}
+                {project.stock_count === 1 ? 'item' : 'itens'}
               </span>
             </div>
           </div>

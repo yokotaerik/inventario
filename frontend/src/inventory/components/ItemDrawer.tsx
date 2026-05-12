@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Package, FolderKanban, ShoppingCart, Tag } from 'lucide-react'
+import { Package, ShoppingCart } from 'lucide-react'
 import Drawer from '../../shared/components/Drawer'
 import ItemForm from './ItemForm'
 import { useItemStore, type Item } from '../store/useItemStore'
@@ -76,21 +76,10 @@ export default function ItemDrawer({ item, onClose }: ItemDrawerProps) {
             </div>
           )}
 
-          {/* Project info */}
-          {item.project_name && (
+          {(item.purchase_code || item.purchase_info) && (
             <>
               <hr className="drawer-divider" />
               <div className="drawer-section">
-                <h3 className="drawer-section-title">
-                  <FolderKanban size={15} /> Projeto
-                </h3>
-                <div className="drawer-meta-row">
-                  <span className="drawer-meta-label">Projeto</span>
-                  <span className="drawer-meta-value">
-                    <Tag size={12} style={{ display: 'inline', verticalAlign: '-1px', marginRight: 4 }} />
-                    [{item.project_code}] {item.project_name}
-                  </span>
-                </div>
                 {item.purchase_code && (
                   <div className="drawer-meta-row">
                     <span className="drawer-meta-label">Cód. Compra</span>
@@ -151,11 +140,6 @@ export default function ItemDrawer({ item, onClose }: ItemDrawerProps) {
                       <div className="sub-item-main">
                         <div className="child-name">{sub.name}</div>
                         <div className="child-cat">{sub.category}</div>
-                        {sub.project_name && (
-                          <div className="child-project">
-                            <FolderKanban size={11} /> {sub.project_name}
-                          </div>
-                        )}
                         <code className="child-qr">{sub.qr_code_hash}</code>
                       </div>
                       <span className={`badge badge-${sub.status}`}>

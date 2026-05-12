@@ -4,7 +4,7 @@ import {
   Pencil, Trash2, Loader2, X, Building2,
 } from 'lucide-react'
 import { useProjectStore, type Project, type ProjectStatus } from '../store/useProjectStore'
-import { useCustomerStore } from '../../customers/store/useCustomerStore'
+import { useCustomerStore, type Customer } from '../../customers/store/useCustomerStore'
 
 type PageView = 'list' | 'create' | 'detail'
 
@@ -23,7 +23,7 @@ function ListView({
   onNew,
 }: {
   projects: Project[]
-  customers: ReturnType<typeof useCustomerStore>['customers']
+  customers: Customer[]
   onSelect: (p: Project) => void
   onNew: () => void
 }) {
@@ -153,7 +153,7 @@ function CreateView({
   onBack,
   onCreated,
 }: {
-  customers: ReturnType<typeof useCustomerStore>['customers']
+  customers: Customer[]
   onBack: () => void
   onCreated: (p: Project) => void
 }) {
@@ -279,7 +279,7 @@ function DetailView({
   onDeleted,
 }: {
   project: Project
-  customers: ReturnType<typeof useCustomerStore>['customers']
+  customers: Customer[]
   onBack: () => void
   onDeleted: () => void
 }) {

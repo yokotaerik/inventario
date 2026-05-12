@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { useCustomerStore, type Customer, type CustomerStatus } from '../store/useCustomerStore'
 import { useProjectStore, type Project } from '../../projects/store/useProjectStore'
-import { useStockStore } from '../../stock/store/useStockStore'
+import { useStockStore, type StockItem } from '../../stock/store/useStockStore'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -636,7 +636,7 @@ function ProjectDetail({
 
 // ─── Item table (reusável) ────────────────────────────────────────────────────
 
-function ItemTable({ items }: { items: ReturnType<typeof useStockStore>['stockItems'] }) {
+function ItemTable({ items }: { items: StockItem[] }) {
   return (
     <div className="item-table">
       <div className="item-table-header">
