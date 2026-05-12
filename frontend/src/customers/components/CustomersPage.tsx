@@ -650,14 +650,21 @@ function NewCustomerInline({ onDone }: { onDone: () => void }) {
               value={form.name}
               onChange={(e) => {
                 const name = e.target.value
-                const autoCode = name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')
                 setForm((c) => {
-                  const currentAuto = c.name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')
-                  const shouldUpdateCode = !c.code || c.code === currentAuto
+                  const cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                  const prefix = cleanName.substring(0, 3).padEnd(3, 'X')
+                  
+                  const match = c.code.match(/\d{2,3}$/)
+                  const num = match ? match[0] : Math.floor(10 + Math.random() * 90).toString()
+                  
+                  const oldClean = c.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                  const oldPrefix = oldClean.substring(0, 3).padEnd(3, 'X')
+                  const wasAuto = !c.code || c.code === `${oldPrefix}${num}` || c.code === oldClean.substring(0, 5)
+
                   return {
                     ...c,
                     name,
-                    code: shouldUpdateCode ? autoCode : c.code
+                    code: wasAuto ? `${prefix}${num}` : c.code
                   }
                 })
               }}
