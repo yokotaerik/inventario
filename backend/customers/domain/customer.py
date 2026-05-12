@@ -20,7 +20,7 @@ class Customer(Base):
     code = Column(String(50), unique=True, nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text)
-    status = Column(Enum(CustomerStatus), default=CustomerStatus.ACTIVE)
+    status = Column(Enum(CustomerStatus, values_callable=lambda obj: [e.value for e in obj]), default=CustomerStatus.ACTIVE)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     projects = relationship("Project", back_populates="customer", cascade="all, delete-orphan")

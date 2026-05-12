@@ -27,7 +27,7 @@ class Project(Base):
     code = Column(String, unique=True, index=True)
     name = Column(String, index=True)
     description = Column(String, nullable=True)
-    status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE)
+    status = Column(Enum(ProjectStatus, values_callable=lambda obj: [e.value for e in obj]), default=ProjectStatus.ACTIVE)
     created_at = Column(DateTime, default=datetime.utcnow)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Building2, FolderKanban, Plus } from 'lucide-react'
+import { Search, Building2, FolderKanban, Plus, Loader2 } from 'lucide-react'
 import { useCustomerStore, type Customer } from '../store/useCustomerStore'
 import { useProjectStore } from '../../projects/store/useProjectStore'
 import CustomerDrawer from './CustomerDrawer'
 import CustomerForm from './CustomerForm'
 
 export default function CustomersGrid() {
-  const { customers, fetchCustomers } = useCustomerStore()
+  const { customers, fetchCustomers, error, loading, clearError } = useCustomerStore()
   const { fetchProjects } = useProjectStore()
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [search, setSearch] = useState('')
@@ -37,6 +37,15 @@ export default function CustomersGrid() {
 
   return (
     <>
+      {error && (
+        <div className="alert-bar" style={{ marginBottom: 8 }}>
+          <div className="alert">
+            <span>{error}</span>
+            <button type="button" className="alert-close" onClick={clearError}>✕</button>
+          </div>
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="search-filter-bar">
         <div className="search-input-wrap">
@@ -110,8 +119,17 @@ export default function CustomersGrid() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
-        <div className="empty-state">Nenhum cliente encontrado.</div>
+      {loading && customers.length === 0 && (
+        <div className="empty-state">
+          <Loader2 size={20} className="spin" style={{ marginBottom: 8 }} />
+          Carregando clientes...
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && (
+        <div className="empty-state">
+          {search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}
+        </div>
       )}
 
       <CustomerDrawer

@@ -49,11 +49,16 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   error: null,
 
   fetchCustomers: async () => {
+    set({ loading: true })
     try {
       const res = await api.get<Customer[]>('/customers')
-      set({ customers: Array.isArray(res.data) ? res.data : [] })
-    } catch {
-      set({ error: 'Erro ao buscar clientes' })
+      if (!Array.isArray(res.data)) {
+        set({ loading: false, error: 'Erro ao buscar clientes: resposta inválida (reinicie o servidor de desenvolvimento)' })
+        return
+      }
+      set({ loading: false, customers: res.data })
+    } catch (err) {
+      set({ loading: false, error: getErrorMessage('Erro ao buscar clientes', err) })
     }
   },
 

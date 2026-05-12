@@ -10,10 +10,11 @@ import { useEmployeeStore } from './workforce/store/useEmployeeStore'
 import { useLoanStore } from './loans/store/useLoanStore'
 import { useCustomerStore } from './customers/store/useCustomerStore'
 
-import ItemStatusView from './inventory/components/ItemStatusView'
+
 import LoansPage from './pages/LoansPage'
 import InventoryPage from './pages/InventoryPage'
-import CustomersGrid from './customers/components/CustomersGrid'
+import CustomersPage from './customers/components/CustomersPage'
+
 import EmployeeGrid from './workforce/components/EmployeeGrid'
 import BottomNav from './components/BottomNav'
 
@@ -195,6 +196,56 @@ export default function App() {
     navigate('loans')
   }
 
+  if (!isAuthenticated) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <div className="login-icon">
+            <Shield size={26} />
+          </div>
+          <h2>Acesso Restrito</h2>
+          <p>Faça login para continuar.</p>
+          {authError && (
+            <div className="alert" style={{ marginBottom: 16, textAlign: 'left' }}>
+              <span>{authError}</span>
+              <button type="button" className="alert-close" onClick={clearError}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <form onSubmit={handleLoginSubmit} className="form-stack" style={{ marginTop: 16 }}>
+            <div className="form-field">
+              <label htmlFor="email">E-mail</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="Digite seu e-mail"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="password">Senha</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Digite sua senha"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-block" disabled={adminLoading}>
+              {adminLoading ? <Loader2 size={16} className="spin" /> : <Lock size={16} />}
+              Entrar
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className="app-shell"
@@ -238,7 +289,7 @@ export default function App() {
             >
               <RefreshCw size={18} className={isRefreshing ? 'spin' : ''} />
             </button>
-            {isAuthenticated && user && (
+            {user && (
               <>
                 <span className="topbar-user">{user.name}</span>
                 <button
@@ -255,10 +306,10 @@ export default function App() {
         </header>
 
         {/* Error alert */}
-        {(error || authError) && (
+        {error && (
           <div className="alert-bar">
             <div className="alert">
-              <span>{error || authError}</span>
+              <span>{error}</span>
               <button type="button" className="alert-close" onClick={clearError}>
                 <X size={14} />
               </button>
@@ -268,53 +319,11 @@ export default function App() {
 
         {/* Page content */}
         <div className="content">
-          {activeTab === 'status' && <ItemStatusView />}
-          
-          {/* Protected Modules */}
-          {activeTab !== 'status' && !isAuthenticated ? (
-             <div className="login-card">
-               <div className="login-icon">
-                 <Shield size={26} />
-               </div>
-               <h2>Acesso Restrito</h2>
-               <p>Faça login para acessar este módulo.</p>
-               <form onSubmit={handleLoginSubmit} className="form-stack" style={{ marginTop: 16 }}>
-                 <div className="form-field">
-                   <label htmlFor="email">E-mail</label>
-                   <input
-                     id="email"
-                     type="email"
-                     placeholder="Digite seu e-mail"
-                     value={loginForm.email}
-                     onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
-                     required
-                   />
-                 </div>
-                 <div className="form-field">
-                   <label htmlFor="password">Senha</label>
-                   <input
-                     id="password"
-                     type="password"
-                     placeholder="Digite sua senha"
-                     value={loginForm.password}
-                     onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
-                     required
-                   />
-                 </div>
-                 <button type="submit" className="btn btn-primary btn-block" disabled={adminLoading}>
-                   {adminLoading ? <Loader2 size={16} className="spin" /> : <Lock size={16} />}
-                   Entrar
-                 </button>
-               </form>
-             </div>
-          ) : (
-             <>
-               {activeTab === 'loans' && <LoansPage />}
-               {activeTab === 'inventory' && <InventoryPage />}
-               {activeTab === 'customers' && <CustomersGrid />}
-               {activeTab === 'workforce' && <EmployeeGrid />}
-             </>
-          )}
+          {activeTab === 'loans' && <LoansPage />}
+          {activeTab === 'inventory' && <InventoryPage />}
+          {activeTab === 'customers' && <CustomersPage />}
+
+          {activeTab === 'workforce' && <EmployeeGrid />}
         </div>
       </div>
 

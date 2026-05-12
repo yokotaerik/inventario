@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { Loader2, Plus, Pencil } from 'lucide-react'
-import { useCustomerStore, type Customer, type CustomerStatus } from '../store/useCustomerStore'
+import { useCustomerStore, type Customer } from '../store/useCustomerStore'
 
 interface CustomerFormProps {
   mode: 'create' | 'edit'

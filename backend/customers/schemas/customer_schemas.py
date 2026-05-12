@@ -2,7 +2,6 @@ from typing import Optional
 from pydantic import BaseModel
 
 from ..domain.customer import CustomerStatus
-from ...projects.domain.project import Project
 
 
 class NewCustomerRequest(BaseModel):
