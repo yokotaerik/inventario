@@ -14,7 +14,7 @@ const defaultForm = {
   name: '',
   department: '',
   is_active: true,
-  location_id: null as number | null,
+  project_id: null as number | null,
   email: '',
   password: '',
   is_admin: false,
@@ -30,7 +30,7 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
           name: employee.name,
           department: employee.department || '',
           is_active: employee.is_active,
-          location_id: employee.location_id,
+          project_id: employee.project_id,
           email: employee.email || '',
           password: '',
           is_admin: employee.is_admin,
@@ -42,15 +42,6 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
     fetchProjects()
   }, [fetchProjects])
 
-  // Flatten all locations from all projects
-  const allLocations = projects.flatMap((p) =>
-    p.locations.map((loc) => ({
-      ...loc,
-      projectName: p.name,
-      projectCode: p.code,
-    })),
-  )
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     let success = false
@@ -58,7 +49,7 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
       name: form.name.trim(),
       department: form.department.trim(),
       is_active: form.is_active,
-      location_id: form.location_id,
+      project_id: form.project_id,
       email: form.email.trim() || undefined,
       password: form.password.trim() || undefined,
       is_admin: form.is_admin,
@@ -107,21 +98,21 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
         </select>
       </div>
       <div className="form-field">
-        <label htmlFor={`${mode}-emp-location`}>Localização</label>
+        <label htmlFor={`${mode}-emp-project`}>Projeto</label>
         <select
-          id={`${mode}-emp-location`}
-          value={form.location_id === null ? '' : String(form.location_id)}
+          id={`${mode}-emp-project`}
+          value={form.project_id === null ? '' : String(form.project_id)}
           onChange={(e) =>
             setForm((c) => ({
               ...c,
-              location_id: e.target.value ? Number(e.target.value) : null,
+              project_id: e.target.value ? Number(e.target.value) : null,
             }))
           }
         >
-          <option value="">Nenhuma</option>
-          {allLocations.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              [{loc.projectCode}] {loc.name}
+          <option value="">Nenhum</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              [{p.code}] {p.name}
             </option>
           ))}
         </select>

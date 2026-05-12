@@ -16,7 +16,6 @@ const defaultForm = {
   units: 1,
   product_code: null as string | null,
   project_id: null as number | null,
-  location_id: null as number | null,
   purchase_code: '',
   purchase_info: '',
 }
@@ -33,7 +32,6 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
           units: 1,
           product_code: item.product_code,
           project_id: item.project_id,
-          location_id: item.location_id,
           purchase_code: item.purchase_code || '',
           purchase_info: item.purchase_info || '',
         }
@@ -45,8 +43,6 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
   }, [fetchProjects])
 
   const activeProjects = projects.filter((p) => p.status === 'active')
-  const selectedProject = activeProjects.find((p) => p.id === form.project_id)
-  const projectLocations = selectedProject?.locations || []
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -56,7 +52,6 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
       name: form.name.trim(),
       category: form.category.trim(),
       project_id: form.project_id,
-      location_id: form.location_id,
       purchase_code: form.purchase_code.trim() || null,
       purchase_info: form.purchase_info.trim() || null,
     }
@@ -78,136 +73,134 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
 
   return (
     <div>
-      <form className="create-form-grid" onSubmit={handleSubmit}>
-        <div className="form-field">
-          <label htmlFor={`${mode}-stock-name`}>Template / Modelo</label>
-          <input
-            id={`${mode}-stock-name`}
-            type="text"
-            placeholder="Ex.: Camera Balluff"
-            value={form.name}
-            onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
-            required
-          />
-          <small className="form-help">Cada unidade criada terá código e QR próprios.</small>
-        </div>
-        <div className="form-field">
-          <label htmlFor={`${mode}-stock-category`}>Categoria</label>
-          <input
-            id={`${mode}-stock-category`}
-            type="text"
-            placeholder="Ex.: Materiais"
-            value={form.category}
-            onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}
-            required
-          />
-        </div>
-        {mode === 'create' && (
-          <div className="form-field">
-            <label htmlFor={`${mode}-stock-units`}>Unidades no lote</label>
-            <input
-              id={`${mode}-stock-units`}
-              type="number"
-              placeholder="1"
-              min="1"
-              max="100"
-              value={form.units}
-              onChange={(e) => setForm((c) => ({ ...c, units: Number(e.target.value) || 1 }))}
-              required
-            />
-            <small className="form-help">
-              Ex.: 2 para criar 2 unidades de Camera Balluff, cada uma com código próprio.
-            </small>
+      <form className="create-form-grid" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        
+        {/* Basic Info Section */}
+        <div style={{ padding: '16px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Informações Básicas</h4>
+          <div className="create-form-grid">
+            <div className="form-field">
+              <label htmlFor={`${mode}-stock-name`}>Template / Modelo</label>
+              <input
+                id={`${mode}-stock-name`}
+                type="text"
+                placeholder="Ex.: Camera Balluff"
+                value={form.name}
+                onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+                required
+              />
+              <small className="form-help">Cada unidade criada terá código e QR próprios.</small>
+            </div>
+            <div className="form-field">
+              <label htmlFor={`${mode}-stock-category`}>Categoria</label>
+              <input
+                id={`${mode}-stock-category`}
+                type="text"
+                placeholder="Ex.: Materiais"
+                value={form.category}
+                onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}
+                required
+              />
+            </div>
+            {mode === 'create' && (
+              <div className="form-field">
+                <label htmlFor={`${mode}-stock-units`}>Unidades no lote</label>
+                <input
+                  id={`${mode}-stock-units`}
+                  type="number"
+                  placeholder="1"
+                  min="1"
+                  max="100"
+                  value={form.units}
+                  onChange={(e) => setForm((c) => ({ ...c, units: Number(e.target.value) || 1 }))}
+                  required
+                />
+                <small className="form-help">
+                  Ex.: 2 para criar 2 unidades de Camera Balluff, cada uma com código próprio.
+                </small>
+              </div>
+            )}
           </div>
-        )}
-        <div className="form-field">
-          <label htmlFor={`${mode}-stock-project`}>Projeto</label>
-          <select
-            id={`${mode}-stock-project`}
-            value={form.project_id === null ? '' : String(form.project_id)}
-            onChange={(e) =>
-              setForm((c) => ({
-                ...c,
-                project_id: e.target.value ? Number(e.target.value) : null,
-                location_id: null,
-              }))
-            }
-            required={mode === 'create'}
-          >
-            <option value="">Selecione um projeto</option>
-            {activeProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                [{p.code}] {p.name}
-              </option>
-            ))}
-          </select>
         </div>
-        {form.project_id && (
-          <div className="form-field">
-            <label htmlFor={`${mode}-stock-location`}>Local do Projeto</label>
-            <select
-              id={`${mode}-stock-location`}
-              value={form.location_id === null ? '' : String(form.location_id)}
-              onChange={(e) =>
-                setForm((c) => ({
-                  ...c,
-                  location_id: e.target.value ? Number(e.target.value) : null,
-                }))
-              }
-            >
-              <option value="">Nenhum (Qualquer local)</option>
-              {projectLocations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
+
+        {/* Project Section */}
+        <div style={{ padding: '16px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Alocação e Identificação</h4>
+          <div className="create-form-grid">
+            <div className="form-field">
+              <label htmlFor={`${mode}-stock-project`}>Projeto</label>
+              <select
+                id={`${mode}-stock-project`}
+                value={form.project_id === null ? '' : String(form.project_id)}
+                onChange={(e) =>
+                  setForm((c) => ({
+                    ...c,
+                    project_id: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                required={mode === 'create'}
+              >
+                <option value="">Selecione um projeto</option>
+                {activeProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    [{p.code}] {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-field">
+              <label htmlFor={`${mode}-stock-product-code`}>Código do Produto</label>
+              <input
+                id={`${mode}-stock-product-code`}
+                type="text"
+                placeholder={mode === 'create' ? 'Gerado automaticamente ao salvar' : '—'}
+                value={mode === 'edit' ? (form.product_code || '—') : (form.product_code || '')}
+                readOnly
+                disabled
+              />
+              <small className="form-help">Gerado automaticamente por unidade ao salvar.</small>
+            </div>
+            <div className="form-field full-width">
+              <label htmlFor={`${mode}-stock-qr`}>Código QR</label>
+              <input
+                id={`${mode}-stock-qr`}
+                type="text"
+                placeholder="Será igual ao código do produto gerado"
+                value={mode === 'edit' ? (item?.product_code || '—') : ''}
+                readOnly
+                disabled
+              />
+              <small className="form-help">QR sempre espelha o código do produto.</small>
+            </div>
           </div>
-        )}
-        <div className="form-field">
-          <label htmlFor={`${mode}-stock-product-code`}>Código do Produto</label>
-          <input
-            id={`${mode}-stock-product-code`}
-            type="text"
-            placeholder={mode === 'create' ? 'Gerado automaticamente ao salvar' : '—'}
-            value={mode === 'edit' ? (form.product_code || '—') : (form.product_code || '')}
-            readOnly
-            disabled
-          />
-          <small className="form-help">Gerado automaticamente por unidade ao salvar.</small>
         </div>
-        <div className="form-field full-width">
-          <label htmlFor={`${mode}-stock-qr`}>Código QR</label>
-          <input
-            id={`${mode}-stock-qr`}
-            type="text"
-            placeholder="Será igual ao código do produto gerado"
-            value={mode === 'edit' ? (item?.product_code || '—') : ''}
-            readOnly
-            disabled
-          />
-          <small className="form-help">QR sempre espelha o código do produto.</small>
-        </div>
-        <div className="form-field">
-          <label htmlFor={`${mode}-stock-purchase-code`}>Cód. Compra</label>
-          <input
-            id={`${mode}-stock-purchase-code`}
-            type="text"
-            placeholder="Ex.: NF-12345"
-            value={form.purchase_code}
-            onChange={(e) => setForm((c) => ({ ...c, purchase_code: e.target.value }))}
-          />
-        </div>
-        <div className="form-field full-width">
-          <label htmlFor={`${mode}-stock-purchase-info`}>Info da Compra</label>
-          <textarea
-            id={`${mode}-stock-purchase-info`}
-            className="form-textarea"
-            placeholder="Detalhes da compra, fornecedor, data..."
-            value={form.purchase_info}
-            onChange={(e) => setForm((c) => ({ ...c, purchase_info: e.target.value }))}
-            rows={2}
-          />
+
+        {/* Purchase Section */}
+        <div style={{ padding: '16px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Dados de Compra</h4>
+          <div className="create-form-grid">
+            <div className="form-field">
+              <label htmlFor={`${mode}-stock-purchase-code`}>Cód. Compra</label>
+              <input
+                id={`${mode}-stock-purchase-code`}
+                type="text"
+                placeholder="Ex.: NF-12345"
+                value={form.purchase_code}
+                onChange={(e) => setForm((c) => ({ ...c, purchase_code: e.target.value }))}
+              />
+            </div>
+            <div className="form-field full-width">
+              <label htmlFor={`${mode}-stock-purchase-info`}>Info da Compra</label>
+              <textarea
+                id={`${mode}-stock-purchase-info`}
+                className="form-textarea"
+                placeholder="Detalhes da compra, fornecedor, data..."
+                value={form.purchase_info}
+                onChange={(e) => setForm((c) => ({ ...c, purchase_info: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="form-field full-width item-form-actions">

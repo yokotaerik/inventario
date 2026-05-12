@@ -63,12 +63,7 @@ export default function StockDrawer({ item, onClose }: StockDrawerProps) {
                       <span className="info-label">Projeto:</span>
                       <span>{item.project_name} ({item.project_code})</span>
                     </div>
-                    {item.location_name && (
-                      <div className="info-row">
-                        <span className="info-label">Local:</span>
-                        <span>{item.location_name}</span>
-                      </div>
-                    )}
+
                   </>
                 )}
                 <div className="info-row">

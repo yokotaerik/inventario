@@ -27,7 +27,7 @@ class CreateEmployeeUseCase:
             name=name,
             department=department,
             is_active=payload.is_active,
-            location_id=payload.location_id,
+            project_id=payload.project_id,
             email=payload.email,
             password_hash=password_hash,
             is_admin=payload.is_admin,

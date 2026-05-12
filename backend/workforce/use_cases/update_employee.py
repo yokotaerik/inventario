@@ -26,7 +26,7 @@ class UpdateEmployeeUseCase:
         employee.name = name
         employee.department = department
         employee.is_active = payload.is_active
-        employee.location_id = payload.location_id
+        employee.project_id = payload.project_id
         employee.email = payload.email
         employee.is_admin = payload.is_admin
 

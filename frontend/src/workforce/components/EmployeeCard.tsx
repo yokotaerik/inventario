@@ -47,13 +47,10 @@ export default function EmployeeCard({ employee, activeItemCount, onClick }: Emp
         {employee.department && (
           <div className="employee-dept">{employee.department}</div>
         )}
-        {employee.location_name && (
+        {employee.project_name && (
           <div className="employee-location-tag">
             <MapPin size={11} />
-            <span>{employee.location_name}</span>
-            {employee.project_name && (
-              <span className="employee-location-project"> • {employee.project_name}</span>
-            )}
+            <span>{employee.project_name}</span>
           </div>
         )}
       </div>

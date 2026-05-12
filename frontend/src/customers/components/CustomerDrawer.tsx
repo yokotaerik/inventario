@@ -156,8 +156,6 @@ export default function CustomerDrawer({ customer, onClose }: CustomerDrawerProp
                             className="child-cat"
                             style={{ marginLeft: 22, fontSize: '0.8rem', color: 'var(--text-muted)' }}
                           >
-                            {proj.locations.length}{' '}
-                            {proj.locations.length === 1 ? 'local' : 'locais'} •{' '}
                             {proj.stock_count}{' '}
                             {proj.stock_count === 1 ? 'item' : 'itens'}
                           </div>

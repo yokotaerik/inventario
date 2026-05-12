@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
-  Search, FolderKanban, MapPin, Package, Plus, ArrowLeft,
+  Search, FolderKanban, Package, Plus, ArrowLeft,
   Pencil, Trash2, Loader2, X, Building2,
 } from 'lucide-react'
 import { useProjectStore, type Project, type ProjectStatus } from '../store/useProjectStore'
@@ -125,9 +125,7 @@ function ListView({
               )}
 
               <div className="project-card-footer">
-                <span className="project-card-stat">
-                  <MapPin size={13} /> {p.locations.length} {p.locations.length === 1 ? 'local' : 'locais'}
-                </span>
+
                 <span className="project-card-stat">
                   <Package size={13} /> {p.stock_count} {p.stock_count === 1 ? 'item' : 'itens'}
                 </span>
@@ -283,7 +281,7 @@ function DetailView({
   onBack: () => void
   onDeleted: () => void
 }) {
-  const { updateProject, deleteProject, createLocation, updateLocation, deleteLocation, loading } = useProjectStore()
+  const { updateProject, deleteProject, loading } = useProjectStore()
 
   // Edit state
   const [editing, setEditing] = useState(false)
@@ -293,12 +291,6 @@ function DetailView({
     description: project.description || '',
     status: project.status,
   })
-
-  // Location state
-  const [locForm, setLocForm] = useState<{ name: string; description: string } | null>(null)
-  const [editingLocId, setEditingLocId] = useState<number | null>(null)
-  const [editLocForm, setEditLocForm] = useState({ name: '', description: '' })
-
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
@@ -317,36 +309,7 @@ function DetailView({
     if (ok) onDeleted()
   }
 
-  const handleAddLoc = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!locForm) return
-    const ok = await createLocation(project.id, {
-      name: locForm.name.trim(),
-      description: locForm.description.trim() || null,
-    })
-    if (ok) setLocForm(null)
-  }
 
-  const handleUpdateLoc = async (e: FormEvent) => {
-    e.preventDefault()
-    if (editingLocId === null) return
-    const ok = await updateLocation(editingLocId, {
-      name: editLocForm.name.trim(),
-      description: editLocForm.description.trim() || null,
-    })
-    if (ok) setEditingLocId(null)
-  }
-
-  const handleDeleteLoc = async (locId: number) => {
-    if (!window.confirm('Excluir este local?')) return
-    await deleteLocation(locId)
-  }
-
-  const startEditLoc = (loc: { id: number; name: string; description: string | null }) => {
-    setEditingLocId(loc.id)
-    setEditLocForm({ name: loc.name, description: loc.description || '' })
-    setLocForm(null)
-  }
 
   return (
     <div className="detail-page">
@@ -444,115 +407,12 @@ function DetailView({
         </div>
       )}
 
-      {/* Locations */}
-      <div className="detail-section">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 className="detail-section-title" style={{ margin: 0 }}>
-            <MapPin size={15} style={{ marginRight: 6, verticalAlign: '-2px' }} />
-            Locais ({project.locations.length})
-          </h3>
-          {!locForm && editingLocId === null && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setLocForm({ name: '', description: '' })}
-            >
-              <Plus size={14} /> Novo local
-            </button>
-          )}
-        </div>
 
-        {project.locations.length > 0 && (
-          <div className="locations-list">
-            {project.locations.map((loc) => (
-              <div key={loc.id} className="location-row">
-                {editingLocId === loc.id ? (
-                  <form onSubmit={handleUpdateLoc} style={{ display: 'flex', gap: 8, flex: 1, flexWrap: 'wrap' }}>
-                    <input
-                      className="location-input"
-                      type="text"
-                      value={editLocForm.name}
-                      onChange={(e) => setEditLocForm((c) => ({ ...c, name: e.target.value }))}
-                      placeholder="Nome do local"
-                      required
-                      autoFocus
-                    />
-                    <input
-                      className="location-input"
-                      type="text"
-                      value={editLocForm.description}
-                      onChange={(e) => setEditLocForm((c) => ({ ...c, description: e.target.value }))}
-                      placeholder="Descrição (opcional)"
-                    />
-                    <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>Salvar</button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingLocId(null)}>Cancelar</button>
-                  </form>
-                ) : (
-                  <>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {loc.code && <code className="project-card-code" style={{ fontSize: '0.75rem' }}>{loc.code}</code>}
-                        <span style={{ fontWeight: 500 }}>{loc.name}</span>
-                      </div>
-                      {loc.description && (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--ink-secondary)', marginTop: 2 }}>{loc.description}</div>
-                      )}
-                    </div>
-                    <div className="row-actions">
-                      <button type="button" className="btn-icon" title="Editar" onClick={() => startEditLoc(loc)}>
-                        <Pencil size={13} />
-                      </button>
-                      <button type="button" className="btn-icon" title="Excluir" onClick={() => handleDeleteLoc(loc.id)}>
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {project.locations.length === 0 && !locForm && (
-          <p style={{ color: 'var(--ink-secondary)', fontSize: '0.875rem', fontStyle: 'italic', margin: '8px 0' }}>
-            Nenhum local cadastrado.
-          </p>
-        )}
-
-        {locForm && (
-          <form onSubmit={handleAddLoc} style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            <input
-              className="location-input"
-              type="text"
-              value={locForm.name}
-              onChange={(e) => setLocForm((c) => c ? { ...c, name: e.target.value } : null)}
-              placeholder="Nome do local *"
-              required
-              autoFocus
-            />
-            <input
-              className="location-input"
-              type="text"
-              value={locForm.description}
-              onChange={(e) => setLocForm((c) => c ? { ...c, description: e.target.value } : null)}
-              placeholder="Descrição (opcional)"
-            />
-            <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-              <Plus size={14} /> Adicionar
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setLocForm(null)}>
-              Cancelar
-            </button>
-          </form>
-        )}
-      </div>
 
       {/* Stats */}
       <div className="detail-section">
         <div style={{ display: 'flex', gap: 16 }}>
-          <div className="stat-chip">
-            <MapPin size={14} /> {project.locations.length} {project.locations.length === 1 ? 'local' : 'locais'}
-          </div>
+
           <div className="stat-chip">
             <Package size={14} /> {project.stock_count} {project.stock_count === 1 ? 'item de estoque' : 'itens de estoque'}
           </div>

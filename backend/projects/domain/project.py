@@ -32,27 +32,11 @@ class Project(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
 
     customer = relationship("Customer", back_populates="projects")
-    locations = relationship("ProjectLocation", back_populates="project", cascade="all, delete-orphan")
     stock_items = relationship("StockItem", back_populates="project")
     anydesk_entries = relationship("AnyDeskEntry", back_populates="project", cascade="all, delete-orphan")
 
 
-class ProjectLocation(Base):
-    """
-    Local físico dentro de um projeto.
-    Itens e funcionários podem estar alocados a um local específico.
-    """
 
-    __tablename__ = "project_locations"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    code = Column(String, unique=True, nullable=True, index=True)
-
-    project = relationship("Project", back_populates="locations")
-    stock_items = relationship("StockItem", back_populates="location")
 
 
 class AnyDeskEntry(Base):

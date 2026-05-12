@@ -41,7 +41,7 @@ export default function EmployeeDrawer({ employee, onClose }: EmployeeDrawerProp
       name: employee.name,
       department: employee.department || '',
       is_active: !employee.is_active,
-      location_id: employee.location_id,
+      project_id: employee.project_id,
     })
   }
 
@@ -75,11 +75,10 @@ export default function EmployeeDrawer({ employee, onClose }: EmployeeDrawerProp
               {employee.department && (
                 <div className="employee-drawer-dept">{employee.department}</div>
               )}
-              {employee.location_name && (
+              {employee.project_name && (
                 <div className="employee-drawer-location" style={{ fontSize: '0.85rem', color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
                   <MapPin size={13} />
-                  {employee.location_name}
-                  {employee.project_name && <span>({employee.project_name})</span>}
+                  {employee.project_name}
                 </div>
               )}
               <span

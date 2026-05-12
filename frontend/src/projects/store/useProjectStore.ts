@@ -3,13 +3,6 @@ import { api, getStoredToken, getErrorMessage, authHeaders } from '../../shared/
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface ProjectLocation {
-  id: number
-  project_id: number
-  name: string
-  description: string | null
-  code: string | null
-}
 
 export interface AnyDeskEntry {
   id: number
@@ -33,7 +26,6 @@ export interface Project {
   customer_id: number
   customer_code: string | null
   customer_name: string | null
-  locations: ProjectLocation[]
   stock_count: number
 }
 
@@ -53,15 +45,6 @@ interface UpdateProjectPayload {
   status?: ProjectStatus
 }
 
-interface CreateLocationPayload {
-  name: string
-  description?: string | null
-}
-
-interface UpdateLocationPayload {
-  name: string
-  description?: string | null
-}
 
 interface CreateAnyDeskPayload {
   machine_name: string
@@ -90,9 +73,6 @@ interface ProjectState {
   updateProject: (id: number, payload: UpdateProjectPayload) => Promise<boolean>
   deleteProject: (id: number) => Promise<boolean>
 
-  createLocation: (projectId: number, payload: CreateLocationPayload) => Promise<boolean>
-  updateLocation: (locationId: number, payload: UpdateLocationPayload) => Promise<boolean>
-  deleteLocation: (locationId: number) => Promise<boolean>
 
   fetchAnyDeskEntries: (projectId: number) => Promise<void>
   createAnyDeskEntry: (projectId: number, payload: CreateAnyDeskPayload) => Promise<boolean>
@@ -162,50 +142,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  createLocation: async (projectId, payload) => {
-    const token = getStoredToken()
-    if (!token) { set({ error: 'Login necessário' }); return false }
-    set({ loading: true, error: null })
-    try {
-      await api.post(`/projects/${projectId}/locations`, payload, { headers: authHeaders(token) })
-      set({ loading: false })
-      await get().fetchProjects()
-      return true
-    } catch (err) {
-      set({ loading: false, error: getErrorMessage('Erro ao criar local', err) })
-      return false
-    }
-  },
-
-  updateLocation: async (locationId, payload) => {
-    const token = getStoredToken()
-    if (!token) { set({ error: 'Login necessário' }); return false }
-    set({ loading: true, error: null })
-    try {
-      await api.put(`/projects/locations/${locationId}`, payload, { headers: authHeaders(token) })
-      set({ loading: false })
-      await get().fetchProjects()
-      return true
-    } catch (err) {
-      set({ loading: false, error: getErrorMessage('Erro ao atualizar local', err) })
-      return false
-    }
-  },
-
-  deleteLocation: async (locationId) => {
-    const token = getStoredToken()
-    if (!token) { set({ error: 'Login necessário' }); return false }
-    set({ loading: true, error: null })
-    try {
-      await api.delete(`/projects/locations/${locationId}`, { headers: authHeaders(token) })
-      set({ loading: false })
-      await get().fetchProjects()
-      return true
-    } catch (err) {
-      set({ loading: false, error: getErrorMessage('Erro ao excluir local', err) })
-      return false
-    }
-  },
 
   fetchAnyDeskEntries: async (projectId) => {
     try {

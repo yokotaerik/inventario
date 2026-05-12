@@ -20,7 +20,6 @@ class UpdateStockItemUseCase:
         stock_item.name = payload.name
         stock_item.category = payload.category
         stock_item.project_id = payload.project_id
-        stock_item.location_id = payload.location_id
         stock_item.purchase_code = payload.purchase_code
         stock_item.purchase_info = payload.purchase_info
 

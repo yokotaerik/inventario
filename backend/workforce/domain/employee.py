@@ -11,9 +11,9 @@ class Employee(Base):
     name = Column(String, nullable=False)
     department = Column(String)
     is_active = Column(Boolean, default=True)
-    location_id = Column(Integer, ForeignKey("project_locations.id"), nullable=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
     email = Column(String, unique=True, nullable=True, index=True)
     password_hash = Column(String, nullable=True)
     is_admin = Column(Boolean, default=False, nullable=False)
 
-    location = relationship("ProjectLocation")
+    project = relationship("Project")

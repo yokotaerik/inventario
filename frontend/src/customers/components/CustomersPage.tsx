@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
-  Search, Building2, FolderKanban, MapPin, Package,
-  Plus, Pencil, Trash2, Loader2, X, ChevronRight, Box,
+  Search, Building2, FolderKanban, Package,
+  Plus, Pencil, Trash2, Loader2, X, ChevronRight,
 } from 'lucide-react'
 import { useCustomerStore, type Customer, type CustomerStatus } from '../store/useCustomerStore'
 import { useProjectStore, type Project } from '../../projects/store/useProjectStore'
@@ -327,9 +327,7 @@ function CustomerDetail({
                       <span style={{ fontWeight: 500 }}>{p.name}</span>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--ink-secondary)', marginTop: 2 }}>
-                      <MapPin size={11} style={{ verticalAlign: '-1px', marginRight: 3 }} />
-                      {p.locations.length} {p.locations.length === 1 ? 'local' : 'locais'}
-                      <Package size={11} style={{ verticalAlign: '-1px', marginLeft: 10, marginRight: 3 }} />
+                      <Package size={11} style={{ verticalAlign: '-1px', marginRight: 3 }} />
                       {p.stock_count} {p.stock_count === 1 ? 'item' : 'itens'}
                     </div>
                   </div>
@@ -450,19 +448,7 @@ function ProjectDetail({
     [stockItems, project.id],
   )
 
-  const itemsByLocation = useMemo(() => {
-    const byLoc: Record<number, typeof projectStockItems> = {}
-    const noLoc: typeof projectStockItems = []
-    for (const item of projectStockItems) {
-      if (item.location_id === null) {
-        noLoc.push(item)
-      } else {
-        if (!byLoc[item.location_id]) byLoc[item.location_id] = []
-        byLoc[item.location_id].push(item)
-      }
-    }
-    return { byLoc, noLoc }
-  }, [projectStockItems])
+
 
   return (
     <div className="detail-page">
@@ -565,63 +551,26 @@ function ProjectDetail({
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <div className="stat-chip">
-          <MapPin size={13} /> {project.locations.length} {project.locations.length === 1 ? 'local' : 'locais'}
-        </div>
+
         <div className="stat-chip">
           <Package size={13} /> {projectStockItems.length} {projectStockItems.length === 1 ? 'item' : 'itens'}
         </div>
       </div>
 
-      {/* Items without location */}
-      {itemsByLocation.noLoc.length > 0 && (
+      {/* Items */}
+      {projectStockItems.length === 0 ? (
+        <div className="empty-state" style={{ margin: '16px 0' }}>
+          Nenhum item cadastrado neste projeto.
+        </div>
+      ) : (
         <div className="detail-section">
           <h3 className="detail-section-title">
-            <Box size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
-            Sem local definido ({itemsByLocation.noLoc.length})
+            <Package size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
+            Itens do Projeto ({projectStockItems.length})
           </h3>
-          <ItemTable items={itemsByLocation.noLoc} />
+          <ItemTable items={projectStockItems} />
         </div>
       )}
-
-      {/* Locations with items */}
-      {project.locations.length === 0 && projectStockItems.length === 0 && (
-        <div className="empty-state" style={{ margin: '16px 0' }}>
-          Nenhum local ou item cadastrado neste projeto.
-        </div>
-      )}
-
-      {project.locations.map((loc) => {
-        const locItems = itemsByLocation.byLoc[loc.id] ?? []
-        return (
-          <div key={loc.id} className="detail-section">
-            <h3 className="detail-section-title">
-              <MapPin size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
-              {loc.code && (
-                <code className="project-card-code" style={{ marginRight: 6, fontSize: '0.75rem' }}>
-                  {loc.code}
-                </code>
-              )}
-              {loc.name}
-              <span style={{ fontWeight: 400, marginLeft: 8, color: 'var(--ink-secondary)' }}>
-                ({locItems.length} {locItems.length === 1 ? 'item' : 'itens'})
-              </span>
-            </h3>
-            {loc.description && (
-              <p style={{ fontSize: '0.82rem', color: 'var(--ink-secondary)', margin: '-6px 0 10px' }}>
-                {loc.description}
-              </p>
-            )}
-            {locItems.length === 0 ? (
-              <p style={{ fontSize: '0.85rem', color: 'var(--ink-secondary)', fontStyle: 'italic' }}>
-                Nenhum item neste local.
-              </p>
-            ) : (
-              <ItemTable items={locItems} />
-            )}
-          </div>
-        )
-      })}
 
       {/* Danger */}
       <div className="detail-section detail-danger-zone">

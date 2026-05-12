@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from ..domain.project import Project, ProjectLocation, ProjectStatus, AnyDeskEntry
+from ..domain.project import Project, ProjectStatus, AnyDeskEntry
 
 
 # ── Request schemas ──────────────────────────────────────────────────────────
@@ -23,14 +23,7 @@ class UpdateProjectRequest(BaseModel):
     status: Optional[ProjectStatus] = None
 
 
-class NewLocationRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
 
-
-class UpdateLocationRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
 
 
 class NewAnyDeskRequest(BaseModel):
@@ -49,14 +42,7 @@ class UpdateAnyDeskRequest(BaseModel):
 
 # ── Serializers ──────────────────────────────────────────────────────────────
 
-def serialize_location(loc: ProjectLocation) -> dict:
-    return {
-        "id": loc.id,
-        "project_id": loc.project_id,
-        "name": loc.name,
-        "description": loc.description,
-        "code": loc.code,
-    }
+
 
 
 def serialize_anydesk_entry(entry: AnyDeskEntry) -> dict:
@@ -71,11 +57,9 @@ def serialize_anydesk_entry(entry: AnyDeskEntry) -> dict:
     }
 
 
-def serialize_project(project: Project, stock_count: Optional[int] = None, locations: Optional[list] = None) -> dict:
+def serialize_project(project: Project, stock_count: Optional[int] = None) -> dict:
     if stock_count is None:
         stock_count = len(project.stock_items) if project.stock_items else 0
-    if locations is None:
-        locations = [serialize_location(loc) for loc in (project.locations or [])]
 
     customer = project.customer if project.customer else None
     return {
@@ -88,6 +72,5 @@ def serialize_project(project: Project, stock_count: Optional[int] = None, locat
         "customer_id": project.customer_id,
         "customer_code": customer.code if customer else None,
         "customer_name": customer.name if customer else None,
-        "locations": locations,
         "stock_count": stock_count,
     }

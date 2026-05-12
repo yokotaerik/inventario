@@ -7,7 +7,7 @@ from .customers.domain.customer import Customer  # noqa: F401
 from .inventory.domain.item import Item  # noqa: F401
 from .workforce.domain.employee import Employee  # noqa: F401
 from .loans.domain.loan import Loan  # noqa: F401
-from .projects.domain.project import Project, ProjectLocation, AnyDeskEntry  # noqa: F401
+from .projects.domain.project import Project, AnyDeskEntry  # noqa: F401
 from .stock.domain.stock_item import StockItem  # noqa: F401
 from .auth.domain.session import Session  # noqa: F401
 
@@ -20,12 +20,12 @@ from .api.routes import loans as loan_routes
 from .api.routes import projects as project_routes
 from .api.routes import stock as stock_routes
 from .shared.database import Base, engine
-from .shared.migrations import ensure_schema, backfill_location_codes
+from .shared.migrations import ensure_schema
 from .shared.bootstrap import bootstrap_admin_if_missing
 
 Base.metadata.create_all(bind=engine)
 ensure_schema()
-backfill_location_codes()
+
 bootstrap_admin_if_missing()
 
 app = FastAPI(title="Inventory QR Control API")

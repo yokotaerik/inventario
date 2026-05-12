@@ -6,8 +6,7 @@ export interface Employee {
   name: string
   department: string
   is_active: boolean
-  location_id: number | null
-  location_name: string | null
+  project_id: number | null
   project_name: string | null
   email: string | null
   is_admin: boolean
@@ -17,7 +16,7 @@ interface CreateEmployeePayload {
   name: string
   department: string
   is_active: boolean
-  location_id: number | null
+  project_id: number | null
   email?: string | null
   password?: string | null
   is_admin?: boolean
@@ -27,7 +26,7 @@ interface UpdateEmployeePayload {
   name: string
   department: string
   is_active: boolean
-  location_id: number | null
+  project_id: number | null
   email?: string | null
   password?: string | null
   is_admin?: boolean

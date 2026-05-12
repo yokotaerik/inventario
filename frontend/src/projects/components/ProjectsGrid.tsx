@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, FolderKanban, MapPin, Package, Plus } from 'lucide-react'
+import { Search, FolderKanban, Package, Plus } from 'lucide-react'
 import { useProjectStore, type Project } from '../store/useProjectStore'
 import ProjectDrawer from './ProjectDrawer'
 import ProjectForm from './ProjectForm'
@@ -119,10 +119,7 @@ export default function ProjectsGrid() {
             )}
 
             <div className="project-card-footer">
-              <span className="project-card-stat">
-                <MapPin size={13} /> {project.locations.length}{' '}
-                {project.locations.length === 1 ? 'local' : 'locais'}
-              </span>
+
               <span className="project-card-stat">
                 <Package size={13} /> {project.stock_count}{' '}
                 {project.stock_count === 1 ? 'item' : 'itens'}

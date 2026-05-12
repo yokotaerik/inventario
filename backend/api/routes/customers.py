@@ -79,16 +79,6 @@ def get_customer_projects(customer_id: int, db: Session = Depends(get_db)):
     result = []
     for project in projects:
         stock_count = len(project.stock_items) if project.stock_items else 0
-        locations = [
-            {
-                "id": loc.id,
-                "project_id": loc.project_id,
-                "name": loc.name,
-                "description": loc.description,
-                "code": loc.code,
-            }
-            for loc in (project.locations or [])
-        ]
-        result.append(serialize_project(project, stock_count, locations))
+        result.append(serialize_project(project, stock_count))
 
     return result

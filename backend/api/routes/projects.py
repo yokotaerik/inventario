@@ -5,21 +5,15 @@ from ...projects.repository.project_repository import ProjectRepository
 from ...projects.schemas.project_schemas import (
     NewProjectRequest,
     UpdateProjectRequest,
-    NewLocationRequest,
-    UpdateLocationRequest,
     NewAnyDeskRequest,
     UpdateAnyDeskRequest,
     serialize_project,
-    serialize_location,
     serialize_anydesk_entry,
 )
 from ...projects.use_cases.create_project import CreateProjectUseCase
 from ...projects.use_cases.update_project import UpdateProjectUseCase
 from ...projects.use_cases.delete_project import DeleteProjectUseCase
 from ...projects.use_cases.list_projects import ListProjectsUseCase
-from ...projects.use_cases.create_location import CreateLocationUseCase
-from ...projects.use_cases.update_location import UpdateLocationUseCase
-from ...projects.use_cases.delete_location import DeleteLocationUseCase
 from ...projects.use_cases.create_anydesk import CreateAnyDeskEntryUseCase
 from ...projects.use_cases.update_anydesk import UpdateAnyDeskEntryUseCase
 from ...projects.use_cases.delete_anydesk import DeleteAnyDeskEntryUseCase
@@ -38,18 +32,8 @@ def list_projects(db: Session = Depends(get_db)):
     result = []
     for p in projects:
         stock_count = len(p.stock_items) if p.stock_items else 0
-        locations = [serialize_location(loc) for loc in (p.locations or [])]
-        result.append(serialize_project(p, stock_count, locations))
+        result.append(serialize_project(p, stock_count))
     return result
-
-
-# Must come before {project_id} to avoid route conflict
-@router.get("/locations/all", response_model=None)
-def list_all_locations(db: Session = Depends(get_db)):
-    """Lista todos os locais de todos os projetos."""
-    repo = ProjectRepository(db)
-    locations = repo.list_all_locations()
-    return [serialize_location(loc) for loc in locations]
 
 
 @router.get("/{project_id}", response_model=None)
@@ -60,8 +44,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     if not project:
         raise NotFoundError(f"Projeto #{project_id} não encontrado.")
     stock_count = len(project.stock_items) if project.stock_items else 0
-    locations = [serialize_location(loc) for loc in (project.locations or [])]
-    return serialize_project(project, stock_count, locations)
+    return serialize_project(project, stock_count)
 
 
 @router.post(
@@ -73,16 +56,14 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 def create_project(payload: NewProjectRequest, db: Session = Depends(get_db)):
     project = CreateProjectUseCase(db).execute(payload)
     stock_count = len(project.stock_items) if project.stock_items else 0
-    locations = [serialize_location(loc) for loc in (project.locations or [])]
-    return serialize_project(project, stock_count, locations)
+    return serialize_project(project, stock_count)
 
 
 @router.put("/{project_id}", response_model=None, dependencies=[Depends(require_admin)])
 def update_project(project_id: int, payload: UpdateProjectRequest, db: Session = Depends(get_db)):
     project = UpdateProjectUseCase(db).execute(project_id, payload)
     stock_count = len(project.stock_items) if project.stock_items else 0
-    locations = [serialize_location(loc) for loc in (project.locations or [])]
-    return serialize_project(project, stock_count, locations)
+    return serialize_project(project, stock_count)
 
 
 @router.delete("/{project_id}", response_model=None, dependencies=[Depends(require_admin)])
@@ -91,36 +72,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     return {"message": message}
 
 
-# ── Locations ────────────────────────────────────────────────────────────────
 
-@router.get("/{project_id}/locations", response_model=None)
-def list_project_locations(project_id: int, db: Session = Depends(get_db)):
-    repo = ProjectRepository(db)
-    locations = repo.list_locations(project_id)
-    return [serialize_location(loc) for loc in locations]
-
-
-@router.post(
-    "/{project_id}/locations",
-    status_code=status.HTTP_201_CREATED,
-    response_model=None,
-    dependencies=[Depends(require_admin)],
-)
-def create_location(project_id: int, payload: NewLocationRequest, db: Session = Depends(get_db)):
-    location = CreateLocationUseCase(db).execute(project_id, payload)
-    return serialize_location(location)
-
-
-@router.put("/locations/{location_id}", response_model=None, dependencies=[Depends(require_admin)])
-def update_location(location_id: int, payload: UpdateLocationRequest, db: Session = Depends(get_db)):
-    location = UpdateLocationUseCase(db).execute(location_id, payload)
-    return serialize_location(location)
-
-
-@router.delete("/locations/{location_id}", response_model=None, dependencies=[Depends(require_admin)])
-def delete_location(location_id: int, db: Session = Depends(get_db)):
-    message = DeleteLocationUseCase(db).execute(location_id)
-    return {"message": message}
 
 
 # ── AnyDesk ───────────────────────────────────────────────────────────────────
