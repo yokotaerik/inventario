@@ -18,7 +18,7 @@ export type { TransactionHistory, BatchOperationResult, ScanResponse } from '../
 
 // Projects context
 export { useProjectStore } from '../projects/store/useProjectStore'
-export type { Project, ProjectLocation, ProjectStatus } from '../projects/store/useProjectStore'
+export type { Project, ProjectStatus } from '../projects/store/useProjectStore'
 
 // Re-export combined hook for convenience (merges state from all stores)
 import { useItemStore } from '../inventory/store/useItemStore'
@@ -73,9 +73,6 @@ export function useInventoryStore() {
     createProject: project.createProject,
     updateProject: project.updateProject,
     deleteProject: project.deleteProject,
-    createLocation: project.createLocation,
-    updateLocation: project.updateLocation,
-    deleteLocation: project.deleteLocation,
 
     // admin loading (from any active store)
     adminLoading: item.adminLoading || employee.adminLoading || project.loading,
