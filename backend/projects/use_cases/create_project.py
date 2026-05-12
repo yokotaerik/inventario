@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from ..domain.project import Project
 from ..repository.project_repository import ProjectRepository
 from ..schemas.project_schemas import NewProjectRequest
-from ...shared.exceptions import ConflictError
+from ...shared.exceptions import ConflictError, NotFoundError
+from ...customers.repository.customer_repository import CustomerRepository
 
 
 class CreateProjectUseCase:
@@ -22,6 +23,11 @@ class CreateProjectUseCase:
         raise ConflictError("Falha ao gerar código de projeto (colisão após 5 tentativas).")
 
     def execute(self, payload: NewProjectRequest) -> Project:
+        customer_repo = CustomerRepository(self.db)
+        customer = customer_repo.get_by_id(payload.customer_id)
+        if not customer:
+            raise NotFoundError("Cliente não encontrado")
+
         code = payload.code
         if not code or not code.strip():
             code = self._generate_code()
@@ -36,6 +42,7 @@ class CreateProjectUseCase:
             name=payload.name,
             description=payload.description,
             status=payload.status,
+            customer_id=payload.customer_id,
         )
         self.repo.create(project)
         self.db.commit()

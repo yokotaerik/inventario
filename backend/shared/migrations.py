@@ -13,6 +13,35 @@ def ensure_schema():
     tables = set(inspector.get_table_names())
 
     with engine.begin() as connection:
+        # Create customers table if it doesn't exist
+        if "customers" not in tables:
+            connection.execute(text("""
+                CREATE TABLE customers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code VARCHAR(50) NOT NULL UNIQUE,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+
+        # Add customer_id column to projects if it doesn't exist
+        if "projects" in tables:
+            existing = {c["name"] for c in inspector.get_columns("projects")}
+            if "customer_id" not in existing:
+                # First, create a default customer if one doesn't exist
+                default_customer = connection.execute(
+                    text("SELECT id FROM customers WHERE code = 'DEFAULT' LIMIT 1")
+                ).fetchone()
+                if not default_customer:
+                    connection.execute(text(
+                        "INSERT INTO customers (code, name, description, status) VALUES ('DEFAULT', 'Padrão', 'Cliente padrão para projetos legados', 'active')"
+                    ))
+
+                # Now add the customer_id column with DEFAULT pointing to the DEFAULT customer
+                _add_column_if_missing(connection, "projects", "customer_id", "INTEGER NOT NULL DEFAULT 1", existing)
+
         if "transactions" in tables:
             existing = {c["name"] for c in inspector.get_columns("transactions")}
             _add_column_if_missing(connection, "transactions", "observacao", "VARCHAR", existing)

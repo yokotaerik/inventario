@@ -8,6 +8,7 @@ from ..domain.project import Project, ProjectLocation, ProjectStatus, AnyDeskEnt
 # ── Request schemas ──────────────────────────────────────────────────────────
 
 class NewProjectRequest(BaseModel):
+    customer_id: int
     code: Optional[str] = None
     name: str
     description: Optional[str] = None
@@ -15,10 +16,11 @@ class NewProjectRequest(BaseModel):
 
 
 class UpdateProjectRequest(BaseModel):
-    code: str
-    name: str
+    customer_id: Optional[int] = None
+    code: Optional[str] = None
+    name: Optional[str] = None
     description: Optional[str] = None
-    status: ProjectStatus
+    status: Optional[ProjectStatus] = None
 
 
 class NewLocationRequest(BaseModel):
@@ -69,7 +71,13 @@ def serialize_anydesk_entry(entry: AnyDeskEntry) -> dict:
     }
 
 
-def serialize_project(project: Project) -> dict:
+def serialize_project(project: Project, stock_count: Optional[int] = None, locations: Optional[list] = None) -> dict:
+    if stock_count is None:
+        stock_count = len(project.stock_items) if project.stock_items else 0
+    if locations is None:
+        locations = [serialize_location(loc) for loc in (project.locations or [])]
+
+    customer = project.customer if project.customer else None
     return {
         "id": project.id,
         "code": project.code,
@@ -77,6 +85,9 @@ def serialize_project(project: Project) -> dict:
         "description": project.description,
         "status": project.status.value,
         "created_at": project.created_at.isoformat() if project.created_at else None,
-        "locations": [serialize_location(loc) for loc in (project.locations or [])],
-        "stock_count": len(project.stock_items) if project.stock_items else 0,
+        "customer_id": project.customer_id,
+        "customer_code": customer.code if customer else None,
+        "customer_name": customer.name if customer else None,
+        "locations": locations,
+        "stock_count": stock_count,
     }

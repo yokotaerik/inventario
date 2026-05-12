@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Package, RefreshCw, LogOut, X, Lock, Loader2 } from 'lucide-react'
-import { ScanLine, ClipboardList, Shield } from 'lucide-react'
+import { ClipboardList, Shield, Building2 } from 'lucide-react'
 import { create } from 'zustand'
 
 import { api, getStoredToken, persistToken, getErrorMessage } from './shared/api/client'
@@ -8,11 +8,12 @@ import { usePullToRefresh } from './shared/hooks/usePullToRefresh'
 import { useItemStore } from './inventory/store/useItemStore'
 import { useEmployeeStore } from './workforce/store/useEmployeeStore'
 import { useLoanStore } from './loans/store/useLoanStore'
+import { useCustomerStore } from './customers/store/useCustomerStore'
 
 import ItemStatusView from './inventory/components/ItemStatusView'
 import LoansPage from './pages/LoansPage'
 import InventoryPage from './pages/InventoryPage'
-import ProjectsGrid from './projects/components/ProjectsGrid'
+import CustomersGrid from './customers/components/CustomersGrid'
 import EmployeeGrid from './workforce/components/EmployeeGrid'
 import BottomNav from './components/BottomNav'
 
@@ -98,12 +99,12 @@ const useAuthStore = create<AuthState>((set) => ({
 }))
 
 // ─── Tab routing ─────────────────────────────────────────────────────────────
-type TabKey = 'loans' | 'inventory' | 'projects' | 'workforce' | 'status'
+type TabKey = 'loans' | 'inventory' | 'customers' | 'workforce' | 'status'
 
 const tabs = [
   { key: 'loans', label: 'Empréstimos', icon: ClipboardList },
   { key: 'inventory', label: 'Inventário', icon: Package },
-  { key: 'projects', label: 'Projetos', icon: ScanLine }, // changed icon? Let's use FolderKanban or keep it simple. Let's import FolderKanban, Users from lucide-react. I will do that in another edit if needed, or I can use existing icons.
+  { key: 'customers', label: 'Clientes', icon: Building2 },
   { key: 'workforce', label: 'Equipe', icon: Shield },
 ] as const
 
@@ -111,7 +112,7 @@ const pageTitleMap: Record<TabKey, string> = {
   status: 'Status Geral',
   loans: 'Empréstimos',
   inventory: 'Inventário',
-  projects: 'Projetos',
+  customers: 'Clientes',
   workforce: 'Equipe',
 }
 
@@ -153,6 +154,7 @@ export default function App() {
     fetchStatusItems()
     fetchEmployees()
     hydrateUser()
+    useCustomerStore.getState().fetchCustomers()
   }, [fetchStatusItems, fetchEmployees, hydrateUser])
 
   // Admin data after auth
@@ -167,9 +169,11 @@ export default function App() {
     await fetchStatusItems()
     await fetchEmployees()
     if (activeTab === 'loans') await fetchTransactions()
+    if (activeTab === 'customers') await useCustomerStore.getState().fetchCustomers()
     if (isAuthenticated) {
       await useItemStore.getState().fetchAllItems()
       await useEmployeeStore.getState().fetchAllEmployees()
+      await useCustomerStore.getState().fetchCustomers()
     }
   }, [fetchStatusItems, fetchEmployees, fetchTransactions, activeTab, isAuthenticated])
 
@@ -307,7 +311,7 @@ export default function App() {
              <>
                {activeTab === 'loans' && <LoansPage />}
                {activeTab === 'inventory' && <InventoryPage />}
-               {activeTab === 'projects' && <ProjectsGrid />}
+               {activeTab === 'customers' && <CustomersGrid />}
                {activeTab === 'workforce' && <EmployeeGrid />}
              </>
           )}

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy.orm import Session
 
@@ -11,8 +11,11 @@ class ProjectRepository:
 
     # ── Project ────────────────────────────────────────────────────────────
 
-    def list_all(self) -> list[Project]:
+    def list_all(self) -> List[Project]:
         return self.db.query(Project).order_by(Project.name).all()
+
+    def list_by_customer(self, customer_id: int) -> List[Project]:
+        return self.db.query(Project).filter(Project.customer_id == customer_id).order_by(Project.name).all()
 
     def get_by_id(self, project_id: int) -> Optional[Project]:
         return self.db.query(Project).filter(Project.id == project_id).first()
@@ -30,7 +33,7 @@ class ProjectRepository:
 
     # ── Location ───────────────────────────────────────────────────────────
 
-    def list_locations(self, project_id: int) -> list[ProjectLocation]:
+    def list_locations(self, project_id: int) -> List[ProjectLocation]:
         return (
             self.db.query(ProjectLocation)
             .filter(ProjectLocation.project_id == project_id)
@@ -38,7 +41,7 @@ class ProjectRepository:
             .all()
         )
 
-    def list_all_locations(self) -> list[ProjectLocation]:
+    def list_all_locations(self) -> List[ProjectLocation]:
         return self.db.query(ProjectLocation).order_by(ProjectLocation.name).all()
 
     def get_location_by_id(self, location_id: int) -> Optional[ProjectLocation]:
@@ -54,7 +57,7 @@ class ProjectRepository:
 
     # ── AnyDesk ───────────────────────────────────────────────────────────────
 
-    def list_anydesk_entries(self, project_id: int) -> list[AnyDeskEntry]:
+    def list_anydesk_entries(self, project_id: int) -> List[AnyDeskEntry]:
         return (
             self.db.query(AnyDeskEntry)
             .filter(AnyDeskEntry.project_id == project_id)

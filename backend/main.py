@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Os imports abaixo registram os modelos ORM no metadata do SQLAlchemy
 # antes de `create_all` rodar. Não remover.
+from .customers.domain.customer import Customer  # noqa: F401
 from .inventory.domain.item import Item  # noqa: F401
 from .workforce.domain.employee import Employee  # noqa: F401
 from .loans.domain.loan import Loan  # noqa: F401
@@ -12,6 +13,7 @@ from .auth.domain.session import Session  # noqa: F401
 
 from .api.exception_handlers import register_exception_handlers
 from .api.routes import auth as auth_routes
+from .api.routes import customers as customer_routes
 from .api.routes import employees as employee_routes
 from .api.routes import items as item_routes
 from .api.routes import loans as loan_routes
@@ -39,6 +41,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(auth_routes.router)
+app.include_router(customer_routes.router)
 app.include_router(item_routes.router)
 app.include_router(employee_routes.router)
 app.include_router(loan_routes.router)

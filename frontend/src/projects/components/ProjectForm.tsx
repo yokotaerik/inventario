@@ -1,32 +1,47 @@
 import { type FormEvent, useState } from 'react'
 import { Loader2, Plus, Pencil } from 'lucide-react'
 import { useProjectStore, type Project, type ProjectStatus } from '../store/useProjectStore'
+import { useCustomerStore } from '../../customers/store/useCustomerStore'
 
 interface ProjectFormProps {
   mode: 'create' | 'edit'
   project?: Project
+  customerId?: number
   onSuccess?: () => void
   onCancel?: () => void
 }
 
 const defaultForm = {
+  customer_id: 0,
   code: '',
   name: '',
   description: '',
   status: 'active' as ProjectStatus,
 }
 
-export default function ProjectForm({ mode, project, onSuccess, onCancel }: ProjectFormProps) {
+export default function ProjectForm({
+  mode,
+  project,
+  customerId,
+  onSuccess,
+  onCancel,
+}: ProjectFormProps) {
   const { createProject, updateProject, loading } = useProjectStore()
+  const { customers } = useCustomerStore()
+
   const [form, setForm] = useState(
     mode === 'edit' && project
       ? {
+          customer_id: project.customer_id,
           code: project.code,
           name: project.name,
           description: project.description || '',
           status: project.status,
         }
-      : defaultForm,
+      : {
+          ...defaultForm,
+          customer_id: customerId || 0,
+        },
   )
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -35,16 +50,19 @@ export default function ProjectForm({ mode, project, onSuccess, onCancel }: Proj
     if (mode === 'create') {
       const trimmedCode = form.code.trim()
       success = await createProject({
+        customer_id: form.customer_id,
         code: trimmedCode || undefined,
         name: form.name.trim(),
         description: form.description.trim() || null,
         status: form.status,
       })
-      if (success) setForm(defaultForm)
+      if (success) {
+        setForm({ ...defaultForm, customer_id: customerId || 0 })
+      }
     } else if (project) {
       success = await updateProject(project.id, {
-        code: form.code.trim(),
-        name: form.name.trim(),
+        code: form.code.trim() || undefined,
+        name: form.name.trim() || undefined,
         description: form.description.trim() || null,
         status: form.status,
       })
@@ -54,6 +72,24 @@ export default function ProjectForm({ mode, project, onSuccess, onCancel }: Proj
 
   return (
     <form className="create-form-grid" onSubmit={handleSubmit}>
+      {mode === 'create' && (
+        <div className="form-field">
+          <label htmlFor={`${mode}-project-customer`}>Cliente *</label>
+          <select
+            id={`${mode}-project-customer`}
+            value={form.customer_id}
+            onChange={(e) => setForm((c) => ({ ...c, customer_id: Number(e.target.value) }))}
+            required
+          >
+            <option value="0">Selecione um cliente...</option>
+            {customers.map((cust) => (
+              <option key={cust.id} value={cust.id}>
+                {cust.code} - {cust.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="form-field">
         <label htmlFor={`${mode}-project-code`}>Código</label>
         <input

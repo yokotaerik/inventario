@@ -14,10 +14,10 @@ class DeleteProjectUseCase:
         if not project:
             raise NotFoundError(f"Projeto #{project_id} não encontrado.")
 
-        if project.items and len(project.items) > 0:
+        if project.stock_items and len(project.stock_items) > 0:
             raise ValidationError(
                 f"Não é possível excluir o projeto '{project.name}' "
-                f"pois ainda possui {len(project.items)} item(ns) vinculado(s)."
+                f"pois ainda possui {len(project.stock_items)} item(ns) de estoque vinculado(s)."
             )
 
         self.repo.delete(project)

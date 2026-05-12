@@ -35,7 +35,21 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 def list_projects(db: Session = Depends(get_db)):
     """Lista todos os projetos (público — para preencher selects)."""
     projects = ListProjectsUseCase(db).execute()
-    return [serialize_project(p) for p in projects]
+    result = []
+    for p in projects:
+        stock_count = len(p.stock_items) if p.stock_items else 0
+        locations = [serialize_location(loc) for loc in (p.locations or [])]
+        result.append(serialize_project(p, stock_count, locations))
+    return result
+
+
+# Must come before {project_id} to avoid route conflict
+@router.get("/locations/all", response_model=None)
+def list_all_locations(db: Session = Depends(get_db)):
+    """Lista todos os locais de todos os projetos."""
+    repo = ProjectRepository(db)
+    locations = repo.list_all_locations()
+    return [serialize_location(loc) for loc in locations]
 
 
 @router.get("/{project_id}", response_model=None)
@@ -45,7 +59,9 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     project = repo.get_by_id(project_id)
     if not project:
         raise NotFoundError(f"Projeto #{project_id} não encontrado.")
-    return serialize_project(project)
+    stock_count = len(project.stock_items) if project.stock_items else 0
+    locations = [serialize_location(loc) for loc in (project.locations or [])]
+    return serialize_project(project, stock_count, locations)
 
 
 @router.post(
@@ -56,13 +72,17 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 )
 def create_project(payload: NewProjectRequest, db: Session = Depends(get_db)):
     project = CreateProjectUseCase(db).execute(payload)
-    return serialize_project(project)
+    stock_count = len(project.stock_items) if project.stock_items else 0
+    locations = [serialize_location(loc) for loc in (project.locations or [])]
+    return serialize_project(project, stock_count, locations)
 
 
 @router.put("/{project_id}", response_model=None, dependencies=[Depends(require_admin)])
 def update_project(project_id: int, payload: UpdateProjectRequest, db: Session = Depends(get_db)):
     project = UpdateProjectUseCase(db).execute(project_id, payload)
-    return serialize_project(project)
+    stock_count = len(project.stock_items) if project.stock_items else 0
+    locations = [serialize_location(loc) for loc in (project.locations or [])]
+    return serialize_project(project, stock_count, locations)
 
 
 @router.delete("/{project_id}", response_model=None, dependencies=[Depends(require_admin)])
@@ -77,14 +97,6 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 def list_project_locations(project_id: int, db: Session = Depends(get_db)):
     repo = ProjectRepository(db)
     locations = repo.list_locations(project_id)
-    return [serialize_location(loc) for loc in locations]
-
-
-@router.get("/locations/all", response_model=None)
-def list_all_locations(db: Session = Depends(get_db)):
-    """Lista todos os locais de todos os projetos."""
-    repo = ProjectRepository(db)
-    locations = repo.list_all_locations()
     return [serialize_location(loc) for loc in locations]
 
 

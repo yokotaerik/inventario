@@ -18,6 +18,7 @@ class Project(Base):
     """
     Projeto — agrupa itens, locais e funcionários.
     Cada projeto tem um código único e pode ter vários locais.
+    Cada projeto está associado a um cliente (customer).
     """
 
     __tablename__ = "projects"
@@ -28,7 +29,9 @@ class Project(Base):
     description = Column(String, nullable=True)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE)
     created_at = Column(DateTime, default=datetime.utcnow)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
 
+    customer = relationship("Customer", back_populates="projects")
     locations = relationship("ProjectLocation", back_populates="project", cascade="all, delete-orphan")
     stock_items = relationship("StockItem", back_populates="project")
     anydesk_entries = relationship("AnyDeskEntry", back_populates="project", cascade="all, delete-orphan")

@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy.orm import Session
 
 from ...shared.exceptions import ConflictError, NotFoundError, ValidationError
@@ -12,15 +13,22 @@ class CreateStockItemUseCase:
         self.db = db
         self.repo = StockItemRepository(db)
 
-    def execute(self, payload: NewStockItemRequest) -> list[StockItem]:
+    def execute(self, payload: NewStockItemRequest) -> List[StockItem]:
         if payload.project_id is None:
             raise ValidationError("Projeto é obrigatório para gerar código do produto e QR no modo estoque")
 
-        from ...projects.domain.project import Project
+        from ...projects.domain.project import Project, ProjectLocation
 
         project = self.db.query(Project).filter(Project.id == payload.project_id).first()
         if not project:
             raise NotFoundError("Projeto não encontrado")
+
+        # Get location code for product code generation
+        location_code = "00"
+        if payload.location_id:
+            location = self.db.query(ProjectLocation).filter(ProjectLocation.id == payload.location_id).first()
+            if location and location.code:
+                location_code = location.code
 
         units = payload.units if payload.units and payload.units > 0 else 0
         if units == 0 and payload.quantity and payload.quantity > 0:
@@ -34,7 +42,7 @@ class CreateStockItemUseCase:
         if manual_code and units > 1:
             raise ValidationError("Para múltiplas unidades, deixe o código do produto em branco para gerar automaticamente")
 
-        created_items: list[StockItem] = []
+        created_items: List[StockItem] = []
 
         for index in range(units):
             if manual_code and index == 0:
@@ -42,7 +50,12 @@ class CreateStockItemUseCase:
                 if self.repo.get_by_product_code(product_code):
                     raise ConflictError(f"Já existe item com o código de produto '{product_code}'")
             else:
-                product_code = next_product_code(self.db, project.code)
+                product_code = next_product_code(
+                    self.db,
+                    project.customer.code if project.customer else "DEFAULT",
+                    project.code,
+                    location_code,
+                )
 
             if self.repo.get_by_qr(product_code):
                 raise ConflictError(f"Já existe item de estoque com QR '{product_code}'")

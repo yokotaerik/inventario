@@ -30,11 +30,15 @@ export interface Project {
   description: string | null
   status: ProjectStatus
   created_at: string | null
+  customer_id: number
+  customer_code: string | null
+  customer_name: string | null
   locations: ProjectLocation[]
   stock_count: number
 }
 
 interface CreateProjectPayload {
+  customer_id: number
   code?: string
   name: string
   description?: string | null
@@ -42,10 +46,11 @@ interface CreateProjectPayload {
 }
 
 interface UpdateProjectPayload {
-  code: string
-  name: string
+  customer_id?: number
+  code?: string
+  name?: string
   description?: string | null
-  status: ProjectStatus
+  status?: ProjectStatus
 }
 
 interface CreateLocationPayload {
