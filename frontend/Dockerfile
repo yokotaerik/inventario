@@ -23,6 +23,6 @@ RUN mkdir -p /etc/nginx/ssl && \
         -out /etc/nginx/ssl/cert.pem \
         -subj "/CN=inventory-app"
 
-EXPOSE 80 443
+EXPOSE 80 8443
 
 CMD ["nginx", "-g", "daemon off;"]

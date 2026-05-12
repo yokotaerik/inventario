@@ -28,7 +28,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
+      - "8443:8443"
     # Para usar certificados reais, monte a pasta abaixo:
     # volumes:
     #   - ./ssl:/etc/nginx/ssl:ro
