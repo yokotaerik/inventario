@@ -59,7 +59,7 @@ export default function CustomerForm({
         <input
           id={`${mode}-customer-code`}
           type="text"
-          placeholder="Ex.: VW, VI, BR"
+          placeholder="Gerado auto..."
           value={form.code}
           onChange={(e) => setForm((c) => ({ ...c, code: e.target.value.toUpperCase() }))}
           required
@@ -74,7 +74,23 @@ export default function CustomerForm({
           type="text"
           placeholder="Ex.: Volkswagen"
           value={form.name}
-          onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+          onChange={(e) => {
+            const name = e.target.value
+            if (mode === 'create') {
+              const autoCode = name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')
+              setForm((c) => {
+                const currentAuto = c.name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')
+                const shouldUpdateCode = !c.code || c.code === currentAuto
+                return {
+                  ...c,
+                  name,
+                  code: shouldUpdateCode ? autoCode : c.code
+                }
+              })
+            } else {
+              setForm((c) => ({ ...c, name }))
+            }
+          }}
           required
         />
       </div>

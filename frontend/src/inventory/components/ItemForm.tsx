@@ -208,7 +208,7 @@ export default function ItemForm({ mode, item, parentOptions, onSuccess, onCance
               <Download size={14} /> QR
             </button>
           )}
-          {mode === 'edit' && onCancel && (
+          {onCancel && (
             <button type="button" className="btn btn-ghost" onClick={onCancel}>
               Cancelar
             </button>

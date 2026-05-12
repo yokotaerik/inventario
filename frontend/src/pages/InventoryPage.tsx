@@ -6,12 +6,10 @@ import StockTable from '../stock/components/StockTable'
 import StockForm from '../stock/components/StockForm'
 import { useItemTree } from '../inventory/hooks/useItemTree'
 
-type InventoryTab = 'items' | 'stock' | 'new'
-type CreateMode = 'loanable' | 'stock'
-
 export default function InventoryPage() {
-  const [activeTab, setActiveTab] = useState<InventoryTab>('items')
-  const [createMode, setCreateMode] = useState<CreateMode>('loanable')
+  const [activeTab, setActiveTab] = useState<'items' | 'stock'>('items')
+  const [showItemForm, setShowItemForm] = useState(false)
+  const [showStockForm, setShowStockForm] = useState(false)
   const { parentOptions } = useItemTree()
 
   return (
@@ -35,63 +33,55 @@ export default function InventoryPage() {
         >
           <Boxes size={15} /> Estoque
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'new'}
-          className={`admin-subnav-btn ${activeTab === 'new' ? 'active' : ''}`}
-          onClick={() => setActiveTab('new')}
-        >
-          <Plus size={15} /> Novo Cadastro
-        </button>
       </div>
 
-      {activeTab === 'items' && <ItemsTable />}
-
-      {activeTab === 'stock' && <StockTable />}
-
-      {activeTab === 'new' && (
-        <div className="create-card">
-          <h2>Novo Cadastro</h2>
-          <p>Escolha o modo para cadastrar corretamente.</p>
-
-          <div className="create-mode-switch" role="tablist" aria-label="Modo de cadastro">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={createMode === 'loanable'}
-              className={`create-mode-btn ${createMode === 'loanable' ? 'active' : ''}`}
-              onClick={() => setCreateMode('loanable')}
-            >
-              <Package size={15} /> Modo Emprestável
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={createMode === 'stock'}
-              className={`create-mode-btn ${createMode === 'stock' ? 'active' : ''}`}
-              onClick={() => setCreateMode('stock')}
-            >
-              <Boxes size={15} /> Modo Estoque
+      {activeTab === 'items' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowItemForm(true)}>
+              <Plus size={14} /> Novo Emprestável
             </button>
           </div>
-
-          <p className="create-mode-help">
-            {createMode === 'loanable'
-              ? 'Emprestável: equipamentos com status (disponível, emprestado e manutenção).'
-              : 'Estoque: materiais por quantidade, sem fluxo de empréstimo.'}
-          </p>
-
-          {createMode === 'loanable' ? (
-            <ItemForm
-              mode="create"
-              parentOptions={parentOptions}
-              onSuccess={() => setActiveTab('items')}
-            />
-          ) : (
-            <StockForm mode="create" onSuccess={() => setActiveTab('stock')} />
+          {showItemForm && (
+            <div className="create-card" style={{ marginBottom: 16 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '0.95rem', fontWeight: 600 }}>Novo Emprestável</h3>
+              <p className="create-mode-help" style={{ marginBottom: 16 }}>
+                Emprestável: equipamentos com status (disponível, emprestado e manutenção).
+              </p>
+              <ItemForm
+                mode="create"
+                parentOptions={parentOptions}
+                onSuccess={() => setShowItemForm(false)}
+                onCancel={() => setShowItemForm(false)}
+              />
+            </div>
           )}
-        </div>
+          <ItemsTable />
+        </>
+      )}
+
+      {activeTab === 'stock' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowStockForm(true)}>
+              <Plus size={14} /> Novo Estoque
+            </button>
+          </div>
+          {showStockForm && (
+            <div className="create-card" style={{ marginBottom: 16 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '0.95rem', fontWeight: 600 }}>Novo Item de Estoque</h3>
+              <p className="create-mode-help" style={{ marginBottom: 16 }}>
+                Estoque: materiais por quantidade alocados em projetos, sem fluxo de empréstimo.
+              </p>
+              <StockForm
+                mode="create"
+                onSuccess={() => setShowStockForm(false)}
+                onCancel={() => setShowStockForm(false)}
+              />
+            </div>
+          )}
+          <StockTable />
+        </>
       )}
     </section>
   )

@@ -137,15 +137,16 @@ export default function EmployeeForm({ mode, employee, onSuccess, onCancel }: Em
           onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
         />
       </div>
-      <div className="form-field">
-        <label htmlFor={`${mode}-emp-admin`}>
-          <input
-            id={`${mode}-emp-admin`}
-            type="checkbox"
-            checked={form.is_admin}
-            onChange={(e) => setForm((c) => ({ ...c, is_admin: e.target.checked }))}
-          />
-          {' '}Admin
+      <div className="form-field" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 28 }}>
+        <input
+          id={`${mode}-emp-admin`}
+          type="checkbox"
+          checked={form.is_admin}
+          onChange={(e) => setForm((c) => ({ ...c, is_admin: e.target.checked }))}
+          style={{ width: '18px', height: '18px', margin: 0, cursor: 'pointer' }}
+        />
+        <label htmlFor={`${mode}-emp-admin`} style={{ margin: 0, cursor: 'pointer' }}>
+          Perfil Administrador
         </label>
       </div>
       <div className="form-field full-width item-form-actions">

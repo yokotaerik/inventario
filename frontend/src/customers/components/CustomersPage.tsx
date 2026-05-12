@@ -633,12 +633,12 @@ function NewCustomerInline({ onDone }: { onDone: () => void }) {
       <form onSubmit={handleSubmit} className="detail-form">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
           <div className="form-field">
-            <label>Código *</label>
+            <label>Código</label>
             <input
               type="text"
-              placeholder="Ex.: MC001"
+              placeholder="Gerado auto..."
               value={form.code}
-              onChange={(e) => setForm((c) => ({ ...c, code: e.target.value }))}
+              onChange={(e) => setForm((c) => ({ ...c, code: e.target.value.toUpperCase() }))}
               required
             />
           </div>
@@ -648,7 +648,19 @@ function NewCustomerInline({ onDone }: { onDone: () => void }) {
               type="text"
               placeholder="Nome do cliente"
               value={form.name}
-              onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+              onChange={(e) => {
+                const name = e.target.value
+                const autoCode = name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')
+                setForm((c) => {
+                  const currentAuto = c.name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '')
+                  const shouldUpdateCode = !c.code || c.code === currentAuto
+                  return {
+                    ...c,
+                    name,
+                    code: shouldUpdateCode ? autoCode : c.code
+                  }
+                })
+              }}
               required
             />
           </div>

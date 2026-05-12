@@ -214,7 +214,7 @@ export default function StockForm({ mode, item, onSuccess, onCancel }: StockForm
             )}
             {mode === 'create' ? 'Criar item' : 'Salvar'}
           </button>
-          {mode === 'edit' && onCancel && (
+          {onCancel && (
             <button type="button" className="btn btn-ghost" onClick={onCancel}>
               Cancelar
             </button>
