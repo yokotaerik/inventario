@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Package, LogOut, User, MapPin, MessageSquare, Loader2 } from 'lucide-react'
+import { Package, LogOut, MapPin, MessageSquare, Loader2 } from 'lucide-react'
 import { useLoanStore, type ScanResponse, type BatchOperationResult } from '../store/useLoanStore'
-import { useEmployeeStore } from '../../workforce/store/useEmployeeStore'
 import { useItemStore } from '../../inventory/store/useItemStore'
 
 const statusLabelMap = { available: 'Disponível', lent: 'Emprestado', maintenance: 'Manutenção' } as const
@@ -15,9 +14,7 @@ interface CheckoutFormProps {
 export default function CheckoutForm({ currentItem, batchSummary, onComplete }: CheckoutFormProps) {
   const { checkout, checkoutContainer } = useLoanStore()
   const { fetchStatusItems } = useItemStore()
-  const { employees } = useEmployeeStore()
 
-  const [selectedEmployee, setSelectedEmployee] = useState(0)
   const [destino, setDestino] = useState('')
   const [obs, setObs] = useState('')
   const [checkoutMode, setCheckoutMode] = useState<'full_available' | 'single_child'>('full_available')
@@ -41,13 +38,11 @@ export default function CheckoutForm({ currentItem, batchSummary, onComplete }: 
   }
 
   const handleSubmit = useCallback(async () => {
-    if (selectedEmployee === 0) return
     setSubmitting(true)
     try {
       if (isContainerScan) {
         const result = await checkoutContainer(
           currentItem.family_container_id,
-          selectedEmployee,
           checkoutMode,
           {
             targetChildId: checkoutMode === 'single_child' ? selectedChildId : undefined,
@@ -58,7 +53,7 @@ export default function CheckoutForm({ currentItem, batchSummary, onComplete }: 
         await fetchStatusItems()
         onComplete(result)
       } else {
-        await checkout(currentItem.item.id, selectedEmployee, {
+        await checkout(currentItem.item.id, {
           destino: destino.trim() || undefined,
           observacao: obs.trim() || undefined,
         })
@@ -69,7 +64,7 @@ export default function CheckoutForm({ currentItem, batchSummary, onComplete }: 
       setSubmitting(false)
     }
   }, [
-    selectedEmployee, isContainerScan, currentItem, checkoutMode, selectedChildId,
+    isContainerScan, currentItem, checkoutMode, selectedChildId,
     destino, obs, checkoutContainer, checkout, fetchStatusItems, onComplete,
   ])
 
@@ -122,24 +117,6 @@ export default function CheckoutForm({ currentItem, batchSummary, onComplete }: 
         </div>
       )}
 
-      {/* Employee select */}
-      <div>
-        <label htmlFor="checkout-employee-select">Funcionário responsável</label>
-        <div className="select-wrap" style={{ marginTop: 6 }}>
-          <User size={16} />
-          <select
-            id="checkout-employee-select"
-            value={selectedEmployee}
-            onChange={(e) => setSelectedEmployee(Number(e.target.value))}
-          >
-            <option value={0}>Selecione um funcionário</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>{emp.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Destino */}
       <div className="form-field">
         <label htmlFor="checkout-destino">
@@ -174,7 +151,6 @@ export default function CheckoutForm({ currentItem, batchSummary, onComplete }: 
         className="btn btn-primary btn-block"
         disabled={
           submitting ||
-          selectedEmployee === 0 ||
           (isContainerScan && checkoutMode === 'single_child' && selectedChildId === 0) ||
           (isContainerScan && checkoutMode === 'single_child' && availableChildren.length === 0)
         }

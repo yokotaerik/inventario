@@ -73,11 +73,10 @@ interface LoanState {
   error: string | null
   fetchTransactions: () => Promise<void>
   scanItem: (qrHash: string) => Promise<void>
-  checkout: (itemId: number, employeeId: number, options?: CheckoutOptions) => Promise<void>
+  checkout: (itemId: number, options?: CheckoutOptions) => Promise<void>
   checkin: (itemId: number, options?: CheckinOptions) => Promise<void>
   checkoutContainer: (
     containerItemId: number,
-    employeeId: number,
     mode: 'full_available' | 'single_child',
     options?: CheckoutOptions & { targetChildId?: number },
   ) => Promise<BatchOperationResult | null>
@@ -115,12 +114,11 @@ export const useLoanStore = create<LoanState>((set) => ({
     }
   },
 
-  checkout: async (itemId, employeeId, options) => {
+  checkout: async (itemId, options) => {
     try {
       await api.post('/transactions/checkout', null, {
         params: {
           item_id: itemId,
-          employee_id: employeeId,
           destino: options?.destino || undefined,
           observacao: options?.observacao || undefined,
         },
@@ -131,12 +129,11 @@ export const useLoanStore = create<LoanState>((set) => ({
     }
   },
 
-  checkoutContainer: async (containerItemId, employeeId, mode, options) => {
+  checkoutContainer: async (containerItemId, mode, options) => {
     try {
       const res = await api.post<BatchOperationResult>('/transactions/checkout/container', null, {
         params: {
           container_item_id: containerItemId,
-          employee_id: employeeId,
           mode,
           target_child_id: options?.targetChildId || undefined,
           destino: options?.destino || undefined,

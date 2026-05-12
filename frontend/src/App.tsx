@@ -3,12 +3,12 @@ import { Package, RefreshCw, LogOut, X, Lock, Loader2 } from 'lucide-react'
 import { ClipboardList, Shield, Building2 } from 'lucide-react'
 import { create } from 'zustand'
 
-import { api, getStoredToken, persistToken, getErrorMessage } from './shared/api/client'
 import { usePullToRefresh } from './shared/hooks/usePullToRefresh'
 import { useItemStore } from './inventory/store/useItemStore'
 import { useEmployeeStore } from './workforce/store/useEmployeeStore'
 import { useLoanStore } from './loans/store/useLoanStore'
 import { useCustomerStore } from './customers/store/useCustomerStore'
+import { useAuthStore } from './shared/store/useAuthStore'
 
 
 import LoansPage from './pages/LoansPage'
@@ -19,85 +19,6 @@ import EmployeeGrid from './workforce/components/EmployeeGrid'
 import BottomNav from './components/BottomNav'
 
 import './App.css'
-
-// ─── Auth store ───────────────────────────────────────────────────────────────
-interface User {
-  id: number
-  name: string
-  email: string
-  is_admin: boolean
-}
-
-interface AuthState {
-  isAuthenticated: boolean
-  user: User | null
-  adminLoading: boolean
-  authError: string | null
-  login: (email: string, password: string) => Promise<boolean>
-  logout: () => Promise<void>
-  hydrateUser: () => Promise<void>
-}
-
-const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: Boolean(getStoredToken()),
-  user: null,
-  adminLoading: false,
-  authError: null,
-
-  login: async (email, password) => {
-    set({ adminLoading: true, authError: null })
-    try {
-      const res = await api.post<{ token: string; user: User }>('/auth/login', { email, password })
-      const token = res.data.token
-      persistToken(token)
-      set({
-        isAuthenticated: true,
-        user: res.data.user,
-        adminLoading: false,
-        authError: null,
-      })
-      await useItemStore.getState().fetchAllItems()
-      await useEmployeeStore.getState().fetchAllEmployees()
-      return true
-    } catch (err) {
-      persistToken(null)
-      set({
-        adminLoading: false,
-        isAuthenticated: false,
-        user: null,
-        authError: getErrorMessage('Login inválido', err),
-      })
-      return false
-    }
-  },
-
-  logout: async () => {
-    try {
-      await api.post('/auth/logout')
-    } catch {
-      // Logout error is not critical
-    }
-    persistToken(null)
-    set({ isAuthenticated: false, user: null, authError: null })
-    useItemStore.setState({ allItems: [] })
-    useEmployeeStore.setState({ allEmployees: [] })
-  },
-
-  hydrateUser: async () => {
-    const token = getStoredToken()
-    if (!token) {
-      set({ isAuthenticated: false, user: null })
-      return
-    }
-    try {
-      const res = await api.get<User>('/auth/me')
-      set({ user: res.data, isAuthenticated: true })
-    } catch {
-      persistToken(null)
-      set({ isAuthenticated: false, user: null })
-    }
-  },
-}))
 
 // ─── Tab routing ─────────────────────────────────────────────────────────────
 type TabKey = 'loans' | 'inventory' | 'customers' | 'workforce' | 'status'
