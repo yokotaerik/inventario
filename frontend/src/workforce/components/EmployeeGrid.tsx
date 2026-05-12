@@ -5,8 +5,10 @@ import { useLoanStore } from '../../loans/store/useLoanStore'
 import EmployeeCard from './EmployeeCard'
 import EmployeeDrawer from './EmployeeDrawer'
 import EmployeeForm from './EmployeeForm'
+import { useIsAdmin } from '../../shared/hooks/useIsAdmin'
 
 export default function EmployeeGrid() {
+  const isAdmin = useIsAdmin()
   const { allEmployees, adminLoading, fetchAllEmployees } = useEmployeeStore()
   const { transactions } = useLoanStore()
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -73,17 +75,19 @@ export default function EmployeeGrid() {
         >
           <RefreshCw size={14} className={adminLoading ? 'spin' : ''} />
         </button>
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => setShowCreateForm((v) => !v)}
-        >
-          <UserPlus size={14} /> Novo
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowCreateForm((v) => !v)}
+          >
+            <UserPlus size={14} /> Novo
+          </button>
+        )}
       </div>
 
       {/* Create form (collapsible) */}
-      {showCreateForm && (
+      {isAdmin && showCreateForm && (
         <div className="create-card" style={{ marginBottom: 20 }}>
           <h2>Novo Funcionário</h2>
           <p>Cadastre colaboradores para controle de retirada e devolução.</p>
@@ -116,10 +120,12 @@ export default function EmployeeGrid() {
         </div>
       )}
 
-      <EmployeeDrawer
-        employee={selectedEmployee}
-        onClose={() => setSelectedEmployee(null)}
-      />
+      {isAdmin && (
+        <EmployeeDrawer
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
+      )}
     </div>
   )
 }

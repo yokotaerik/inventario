@@ -4,6 +4,7 @@ import Drawer from '../../shared/components/Drawer'
 import ItemForm from './ItemForm'
 import { useItemStore, type Item } from '../store/useItemStore'
 import { useItemTree } from '../hooks/useItemTree'
+import { useIsAdmin } from '../../shared/hooks/useIsAdmin'
 
 const statusLabelMap = {
   available: 'Disponível',
@@ -17,6 +18,7 @@ interface ItemDrawerProps {
 }
 
 export default function ItemDrawer({ item, onClose }: ItemDrawerProps) {
+  const isAdmin = useIsAdmin()
   const { allItems, deleteItem } = useItemStore()
   const { parentOptions } = useItemTree()
 
@@ -101,17 +103,19 @@ export default function ItemDrawer({ item, onClose }: ItemDrawerProps) {
 
           <hr className="drawer-divider" />
 
-          {/* Edit form */}
-          <div className="drawer-section">
-            <h3 className="drawer-section-title">Editar</h3>
-            <ItemForm
-              mode="edit"
-              item={item}
-              parentOptions={parentOptions}
-              onSuccess={onClose}
-              onCancel={onClose}
-            />
-          </div>
+          {/* Edit form — admin only */}
+          {isAdmin && (
+            <div className="drawer-section">
+              <h3 className="drawer-section-title">Editar</h3>
+              <ItemForm
+                mode="edit"
+                item={item}
+                parentOptions={parentOptions}
+                onSuccess={onClose}
+                onCancel={onClose}
+              />
+            </div>
+          )}
 
           {/* Sub-items — improved */}
           {subItems.length > 0 && (
@@ -152,13 +156,17 @@ export default function ItemDrawer({ item, onClose }: ItemDrawerProps) {
             </>
           )}
 
-          {/* Danger zone */}
-          <hr className="drawer-divider" />
-          <div className="drawer-section">
-            <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete}>
-              Excluir item
-            </button>
-          </div>
+          {/* Danger zone — admin only */}
+          {isAdmin && (
+            <>
+              <hr className="drawer-divider" />
+              <div className="drawer-section">
+                <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete}>
+                  Excluir item
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </Drawer>

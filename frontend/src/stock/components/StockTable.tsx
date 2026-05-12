@@ -3,6 +3,7 @@ import { Pencil, Trash2, Search, RefreshCw, ChevronDown, FolderKanban } from 'lu
 import { useStockStore, type StockItem } from '../store/useStockStore'
 import { useProjectStore } from '../../projects/store/useProjectStore'
 import StockDrawer from './StockDrawer'
+import { useIsAdmin } from '../../shared/hooks/useIsAdmin'
 
 const ITEMS_PER_PAGE = 12
 
@@ -15,6 +16,7 @@ const SortIcon = ({ field, sortField, sortDir }: { field: 'name' | 'category' | 
   ) : null
 
 export default function StockTable() {
+  const isAdmin = useIsAdmin()
   const { stockItems, loading, fetchStockItems, deleteStockItem } = useStockStore()
   const { projects, fetchProjects } = useProjectStore()
   const [selectedItem, setSelectedItem] = useState<StockItem | null>(null)
@@ -180,24 +182,26 @@ export default function StockTable() {
                     )}
                   </td>
                   <td onClick={(e) => e.stopPropagation()}>
-                    <div className="row-actions">
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        title="Ver / Editar"
-                        onClick={() => setSelectedItem(item)}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon"
-                        title="Excluir"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Ver / Editar"
+                          onClick={() => setSelectedItem(item)}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Excluir"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -234,7 +238,9 @@ export default function StockTable() {
         )}
       </div>
 
-      <StockDrawer item={syncedItem} onClose={() => setSelectedItem(null)} />
+      {isAdmin && (
+        <StockDrawer item={syncedItem} onClose={() => setSelectedItem(null)} />
+      )}
     </>
   )
 }

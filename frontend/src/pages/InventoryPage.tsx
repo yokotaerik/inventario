@@ -5,8 +5,10 @@ import ItemForm from '../inventory/components/ItemForm'
 import StockTable from '../stock/components/StockTable'
 import StockForm from '../stock/components/StockForm'
 import { useItemTree } from '../inventory/hooks/useItemTree'
+import { useIsAdmin } from '../shared/hooks/useIsAdmin'
 
 export default function InventoryPage() {
+  const isAdmin = useIsAdmin()
   const [activeTab, setActiveTab] = useState<'items' | 'stock'>('items')
   const [showItemForm, setShowItemForm] = useState(false)
   const [showStockForm, setShowStockForm] = useState(false)
@@ -37,12 +39,14 @@ export default function InventoryPage() {
 
       {activeTab === 'items' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowItemForm(true)}>
-              <Plus size={14} /> Novo Emprestável
-            </button>
-          </div>
-          {showItemForm && (
+          {isAdmin && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowItemForm(true)}>
+                <Plus size={14} /> Novo Emprestável
+              </button>
+            </div>
+          )}
+          {isAdmin && showItemForm && (
             <div className="create-card" style={{ marginBottom: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: '0.95rem', fontWeight: 600 }}>Novo Emprestável</h3>
               <p className="create-mode-help" style={{ marginBottom: 16 }}>
@@ -62,12 +66,14 @@ export default function InventoryPage() {
 
       {activeTab === 'stock' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowStockForm(true)}>
-              <Plus size={14} /> Novo Estoque
-            </button>
-          </div>
-          {showStockForm && (
+          {isAdmin && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowStockForm(true)}>
+                <Plus size={14} /> Novo Estoque
+              </button>
+            </div>
+          )}
+          {isAdmin && showStockForm && (
             <div className="create-card" style={{ marginBottom: 16 }}>
               <h3 style={{ margin: '0 0 12px', fontSize: '0.95rem', fontWeight: 600 }}>Novo Item de Estoque</h3>
               <p className="create-mode-help" style={{ marginBottom: 16 }}>

@@ -6,6 +6,7 @@ import {
 import { useCustomerStore, type Customer, type CustomerStatus } from '../store/useCustomerStore'
 import { useProjectStore, type Project } from '../../projects/store/useProjectStore'
 import { useStockStore, type StockItem } from '../../stock/store/useStockStore'
+import { useIsAdmin } from '../../shared/hooks/useIsAdmin'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ function CustomersList({
   onNew: () => void
   loading: boolean
 }) {
+  const isAdmin = useIsAdmin()
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
@@ -63,9 +65,11 @@ function CustomersList({
             {customers.length} cliente{customers.length !== 1 ? 's' : ''} cadastrado{customers.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={onNew}>
-          <Plus size={16} /> Novo Cliente
-        </button>
+        {isAdmin && (
+          <button type="button" className="btn btn-primary" onClick={onNew}>
+            <Plus size={16} /> Novo Cliente
+          </button>
+        )}
       </div>
 
       <div className="search-filter-bar">
@@ -143,6 +147,7 @@ function CustomerDetail({
   onSelectProject: (p: Project) => void
   onDeleted: () => void
 }) {
+  const isAdmin = useIsAdmin()
   const { updateCustomer, deleteCustomer, loading } = useCustomerStore()
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -207,7 +212,7 @@ function CustomerDetail({
             </p>
           )}
         </div>
-        {!editing && (
+        {!editing && isAdmin && (
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -290,13 +295,15 @@ function CustomerDetail({
             <FolderKanban size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
             Projetos ({customerProjects.length})
           </h3>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => setShowNewProject((v) => !v)}
-          >
-            <Plus size={14} /> Novo Projeto
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowNewProject((v) => !v)}
+            >
+              <Plus size={14} /> Novo Projeto
+            </button>
+          )}
         </div>
 
         {showNewProject && (
@@ -345,12 +352,14 @@ function CustomerDetail({
       </div>
 
       {/* Danger */}
-      <div className="detail-section detail-danger-zone">
-        <h3 className="detail-section-title" style={{ color: 'var(--danger)' }}>Zona de risco</h3>
-        <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete}>
-          <Trash2 size={14} /> Excluir cliente
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="detail-section detail-danger-zone">
+          <h3 className="detail-section-title" style={{ color: 'var(--danger)' }}>Zona de risco</h3>
+          <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete}>
+            <Trash2 size={14} /> Excluir cliente
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -414,6 +423,7 @@ function ProjectDetail({
   onBack: () => void
   onDeleted: () => void
 }) {
+  const isAdmin = useIsAdmin()
   const { updateProject, deleteProject, loading } = useProjectStore()
   const { stockItems, fetchStockItems } = useStockStore()
   const [editing, setEditing] = useState(false)
@@ -489,7 +499,7 @@ function ProjectDetail({
             </p>
           )}
         </div>
-        {!editing && (
+        {!editing && isAdmin && (
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -573,12 +583,14 @@ function ProjectDetail({
       )}
 
       {/* Danger */}
-      <div className="detail-section detail-danger-zone">
-        <h3 className="detail-section-title" style={{ color: 'var(--danger)' }}>Zona de risco</h3>
-        <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete}>
-          <Trash2 size={14} /> Excluir projeto
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="detail-section detail-danger-zone">
+          <h3 className="detail-section-title" style={{ color: 'var(--danger)' }}>Zona de risco</h3>
+          <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete}>
+            <Trash2 size={14} /> Excluir projeto
+          </button>
+        </div>
+      )}
     </div>
   )
 }

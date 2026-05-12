@@ -9,6 +9,7 @@ import { useEmployeeStore } from './workforce/store/useEmployeeStore'
 import { useLoanStore } from './loans/store/useLoanStore'
 import { useCustomerStore } from './customers/store/useCustomerStore'
 import { useAuthStore } from './shared/store/useAuthStore'
+import { useIsAdmin } from './shared/hooks/useIsAdmin'
 
 
 import LoansPage from './pages/LoansPage'
@@ -23,11 +24,11 @@ import './App.css'
 // ─── Tab routing ─────────────────────────────────────────────────────────────
 type TabKey = 'loans' | 'inventory' | 'customers' | 'workforce' | 'status'
 
-const tabs = [
-  { key: 'loans', label: 'Empréstimos', icon: ClipboardList },
-  { key: 'inventory', label: 'Inventário', icon: Package },
-  { key: 'customers', label: 'Clientes', icon: Building2 },
-  { key: 'workforce', label: 'Equipe', icon: Shield },
+const allTabs = [
+  { key: 'loans', label: 'Empréstimos', icon: ClipboardList, adminOnly: false },
+  { key: 'inventory', label: 'Inventário', icon: Package, adminOnly: false },
+  { key: 'customers', label: 'Clientes', icon: Building2, adminOnly: false },
+  { key: 'workforce', label: 'Equipe', icon: Shield, adminOnly: true },
 ] as const
 
 const pageTitleMap: Record<TabKey, string> = {
@@ -51,8 +52,11 @@ const useTabStore = create<TabState>((set) => ({
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const isAdmin = useIsAdmin()
   const { isAuthenticated, user, adminLoading, authError, login, logout, hydrateUser } = useAuthStore()
   const { activeTab, navigate } = useTabStore()
+
+  const visibleTabs = allTabs.filter((t) => !t.adminOnly || isAdmin)
 
   const { fetchStatusItems, clearError: clearItemError, error: itemError } = useItemStore()
   const { fetchEmployees } = useEmployeeStore()
@@ -250,7 +254,7 @@ export default function App() {
 
       {/* Navigation — bottom on mobile, sidebar on desktop */}
       <BottomNav
-        tabs={tabs}
+        tabs={visibleTabs}
         activeTab={activeTab}
         isAuthenticated={isAuthenticated}
         onNavigate={(tab) => navigate(tab as TabKey)}

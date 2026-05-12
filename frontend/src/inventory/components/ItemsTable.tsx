@@ -6,6 +6,7 @@ import { useItemTree } from '../hooks/useItemTree'
 import { buildItemDeepLink } from '../../shared/utils/formatters'
 import { downloadQrByCanvasId } from '../../shared/utils/qr'
 import ItemDrawer from './ItemDrawer'
+import { useIsAdmin } from '../../shared/hooks/useIsAdmin'
 
 const statusLabelMap = {
   available: 'Disponível',
@@ -24,6 +25,7 @@ const SortIcon = ({ field, sortField, sortDir }: { field: 'name' | 'category' | 
   ) : null
 
 export default function ItemsTable() {
+  const isAdmin = useIsAdmin()
   const { allItems, adminLoading, fetchAllItems } = useItemStore()
   const { categories } = useItemTree()
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
@@ -223,14 +225,16 @@ export default function ItemsTable() {
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn-icon"
-                          title="Ver / Editar"
-                          onClick={() => setSelectedItem(rowItem)}
-                        >
-                          <Pencil size={14} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            title="Ver / Editar"
+                            onClick={() => setSelectedItem(rowItem)}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn-icon"
@@ -294,7 +298,9 @@ export default function ItemsTable() {
         )}
       </div>
 
-      <ItemDrawer item={syncedItem} onClose={() => setSelectedItem(null)} />
+      {isAdmin && (
+        <ItemDrawer item={syncedItem} onClose={() => setSelectedItem(null)} />
+      )}
     </>
   )
 }
